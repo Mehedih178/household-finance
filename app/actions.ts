@@ -118,7 +118,11 @@ export async function createHousehold(formData: FormData) {
     ["Groceries", "expense", "#ff9500", "cart"],
     ["Home", "expense", "#007aff", "home"],
     ["Transport", "expense", "#5856d6", "car"],
+    ["Gas", "expense", "#5856d6", "fuel"],
     ["Dining", "expense", "#ff2d55", "utensils"],
+    ["Date Nights", "expense", "#af52de", "heart"],
+    ["Vacation", "expense", "#5ac8fa", "plane"],
+    ["Fun Money", "expense", "#ffcc00", "sparkles"],
     ["Savings", "expense", "#30d158", "piggy-bank"]
   ] as const;
 

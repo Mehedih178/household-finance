@@ -4,14 +4,17 @@ import { AppShell } from "@/components/app-shell";
 import { CashFlowChart } from "@/components/charts";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatCard } from "@/components/stat-card";
+import { budgetAlert, daysLeftInMonth } from "@/lib/budgeting";
 import { getDashboardData } from "@/lib/data";
 import { formatCurrency, monthKey } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const data = await getDashboardData(monthKey());
+  const currentMonth = monthKey();
+  const data = await getDashboardData(currentMonth);
   const income = data.transactions.filter((t) => t.kind === "income").reduce((sum, t) => sum + Number(t.amount), 0);
   const expenses = data.transactions.filter((t) => t.kind === "expense").reduce((sum, t) => sum + Number(t.amount), 0);
   const balance = income - expenses;
+  const daysLeft = daysLeftInMonth(currentMonth);
 
   const chartData = Array.from({ length: 4 }).map((_, index) => {
     const week = index + 1;
@@ -64,14 +67,33 @@ export default async function DashboardPage() {
             const spent = data.transactions
               .filter((t) => t.kind === "expense" && t.category_id === budget.category_id)
               .reduce((sum, t) => sum + Number(t.amount), 0);
-            const percent = Number(budget.amount) ? (spent / Number(budget.amount)) * 100 : 0;
+            const previousBudget = data.previousBudgets.find((item) => item.category_id === budget.category_id);
+            const previousSpent = data.previousTransactions
+              .filter((t) => t.category_id === budget.category_id)
+              .reduce((sum, t) => sum + Number(t.amount), 0);
+            const rollover = previousBudget ? Math.max(0, Number(previousBudget.amount) - previousSpent) : 0;
+            const envelopeTotal = Number(budget.amount) + rollover;
+            const percent = envelopeTotal ? (spent / envelopeTotal) * 100 : 0;
+            const categoryName = budget.categories?.name ?? "Budget";
+            const alert = budgetAlert({
+              budgetAmount: envelopeTotal,
+              categoryName,
+              daysLeft,
+              spent
+            });
             return (
               <div key={budget.id} className="ios-card p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="font-semibold text-app-text">{budget.categories?.name ?? "Budget"}</p>
-                  <p className="text-sm text-app-muted">{formatCurrency(spent)} / {formatCurrency(Number(budget.amount))}</p>
+                  <p className="font-semibold text-app-text">{categoryName}</p>
+                  <p className="text-sm text-app-muted">{formatCurrency(spent)} / {formatCurrency(envelopeTotal)}</p>
                 </div>
                 <ProgressBar value={percent} />
+                {rollover > 0 ? (
+                  <p className="mt-2 text-xs text-app-muted">{formatCurrency(rollover)} rolled over from last month</p>
+                ) : null}
+                {alert ? (
+                  <p className="mt-2 text-sm font-medium text-app-danger">{alert}</p>
+                ) : null}
               </div>
             );
           })}

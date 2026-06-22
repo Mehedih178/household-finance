@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { monthRange, previousMonthKey } from "@/lib/budgeting";
 
 export const ACTIVE_HOUSEHOLD_COOKIE = "active_household_id";
 
@@ -42,22 +43,22 @@ export async function requireHousehold() {
 
 export async function getDashboardData(month: string) {
   const { supabase, householdId, householdName, user } = await requireHousehold();
-  const monthStart = `${month}-01`;
-  const nextMonth = new Date(`${monthStart}T00:00:00`);
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
-  const monthEnd = nextMonth.toISOString().slice(0, 10);
+  const monthDates = monthRange(month);
+  const previousDates = monthRange(previousMonthKey(month));
 
-  const [transactions, categories, accounts, budgets, members] = await Promise.all([
+  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, members] = await Promise.all([
     supabase
       .from("transactions")
       .select("*, categories(name, color), accounts(name), profiles!transactions_created_by_fkey(full_name, email)")
       .eq("household_id", householdId)
-      .gte("occurred_on", monthStart)
-      .lt("occurred_on", monthEnd)
+      .gte("occurred_on", monthDates.start)
+      .lt("occurred_on", monthDates.end)
       .order("occurred_on", { ascending: false }),
     supabase.from("categories").select("*").eq("household_id", householdId).order("name"),
     supabase.from("accounts").select("*").eq("household_id", householdId).order("name"),
-    supabase.from("budgets").select("*, categories(name, color)").eq("household_id", householdId).eq("month", monthStart),
+    supabase.from("budgets").select("*, categories(name, color)").eq("household_id", householdId).eq("month", monthDates.start),
+    supabase.from("budgets").select("*, categories(name, color)").eq("household_id", householdId).eq("month", previousDates.start),
+    supabase.from("transactions").select("*").eq("household_id", householdId).eq("kind", "expense").gte("occurred_on", previousDates.start).lt("occurred_on", previousDates.end),
     supabase.from("household_members").select("user_id, role, profiles(full_name, email)").eq("household_id", householdId)
   ]);
 
@@ -69,6 +70,8 @@ export async function getDashboardData(month: string) {
     categories: categories.data ?? [],
     accounts: accounts.data ?? [],
     budgets: budgets.data ?? [],
+    previousBudgets: previousBudgets.data ?? [],
+    previousTransactions: previousTransactions.data ?? [],
     members: members.data ?? []
   };
 }
