@@ -188,6 +188,18 @@ create table public.notification_preferences (
   unique (household_id, user_id)
 );
 
+create table public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index accounts_household_idx on public.accounts(household_id);
 create index transactions_household_date_idx on public.transactions(household_id, occurred_on desc);
 create index budgets_household_month_idx on public.budgets(household_id, month);
@@ -198,6 +210,7 @@ create index financial_notes_household_idx on public.financial_notes(household_i
 create index financial_notes_target_idx on public.financial_notes(target_type, target_id);
 create index net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
 create index notification_preferences_user_idx on public.notification_preferences(user_id, household_id);
+create index push_subscriptions_user_idx on public.push_subscriptions(user_id, household_id);
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -252,6 +265,7 @@ alter table public.goal_contributions enable row level security;
 alter table public.financial_notes enable row level security;
 alter table public.net_worth_snapshots enable row level security;
 alter table public.notification_preferences enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 create policy "Profiles are visible to household members"
 on public.profiles for select
@@ -343,10 +357,10 @@ create policy "Members create budgets"
 on public.budgets for insert
 with check (public.is_household_member(household_id) and owner_id = auth.uid() and created_by = auth.uid());
 
-create policy "Owners manage own budgets"
+create policy "Members manage shared or own budgets"
 on public.budgets for update
-using (public.is_household_member(household_id) and owner_id = auth.uid())
-with check (public.is_household_member(household_id) and owner_id = auth.uid());
+using (public.is_household_member(household_id) and (owner_id = auth.uid() or is_shared))
+with check (public.is_household_member(household_id) and (owner_id = auth.uid() or is_shared));
 
 create policy "Members view allowed recurring items"
 on public.recurring_items for select
@@ -444,3 +458,20 @@ create policy "Users update own notification preferences"
 on public.notification_preferences for update
 using (public.is_household_member(household_id) and user_id = auth.uid())
 with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users view own push subscriptions"
+on public.push_subscriptions for select
+using (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users create own push subscriptions"
+on public.push_subscriptions for insert
+with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users update own push subscriptions"
+on public.push_subscriptions for update
+using (public.is_household_member(household_id) and user_id = auth.uid())
+with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users delete own push subscriptions"
+on public.push_subscriptions for delete
+using (public.is_household_member(household_id) and user_id = auth.uid());

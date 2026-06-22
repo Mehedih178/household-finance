@@ -2,9 +2,11 @@ import Link from "next/link";
 import { saveNotificationPreferences } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
+import { PushNotificationControls } from "@/components/push-notification-controls";
 import { monthRange, previousMonthKey } from "@/lib/budgeting";
 import { requireHousehold } from "@/lib/data";
 import { defaultNotificationPreferences, generateFinanceInbox, type FinanceInboxItem } from "@/lib/finance-inbox";
+import { getVapidPublicKey } from "@/lib/push";
 import { formatCurrency, monthKey } from "@/lib/utils";
 
 function toneClasses(severity: FinanceInboxItem["severity"]) {
@@ -26,8 +28,6 @@ export default async function NotificationsPage({
   const { supabase, householdId, user } = await requireHousehold();
   const currentMonth = monthRange(monthKey());
   const previousMonth = monthRange(previousMonthKey(monthKey()));
-  const historyStart = new Date(`${currentMonth.start}T00:00:00`);
-  historyStart.setMonth(historyStart.getMonth() - 2);
 
   const [
     { data: budgets },
@@ -67,6 +67,7 @@ export default async function NotificationsPage({
   ]);
 
   const preferences = preferencesRow ?? defaultNotificationPreferences;
+  const vapidPublicKey = getVapidPublicKey();
   const inbox = generateFinanceInbox({
     accounts: accounts ?? [],
     budgets: budgets ?? [],
@@ -163,6 +164,8 @@ export default async function NotificationsPage({
         </div>
         <button className="ios-button" type="submit">Save controls</button>
       </form>
+
+      <PushNotificationControls publicKey={vapidPublicKey} />
     </AppShell>
   );
 }

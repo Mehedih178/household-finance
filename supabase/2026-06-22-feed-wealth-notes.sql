@@ -1,5 +1,13 @@
 alter type public.account_type add value if not exists 'crypto';
 
+drop policy if exists "Owners manage own budgets" on public.budgets;
+drop policy if exists "Members manage shared or own budgets" on public.budgets;
+
+create policy "Members manage shared or own budgets"
+on public.budgets for update
+using (public.is_household_member(household_id) and (owner_id = auth.uid() or is_shared))
+with check (public.is_household_member(household_id) and (owner_id = auth.uid() or is_shared));
+
 create table if not exists public.financial_notes (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households(id) on delete cascade,
@@ -40,14 +48,28 @@ create table if not exists public.notification_preferences (
   unique (household_id, user_id)
 );
 
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists financial_notes_household_idx on public.financial_notes(household_id, created_at desc);
 create index if not exists financial_notes_target_idx on public.financial_notes(target_type, target_id);
 create index if not exists net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
 create index if not exists notification_preferences_user_idx on public.notification_preferences(user_id, household_id);
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id, household_id);
 
 alter table public.financial_notes enable row level security;
 alter table public.net_worth_snapshots enable row level security;
 alter table public.notification_preferences enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 drop policy if exists "Members view allowed financial notes" on public.financial_notes;
 drop policy if exists "Members create financial notes" on public.financial_notes;
@@ -58,6 +80,10 @@ drop policy if exists "Members update net worth snapshots" on public.net_worth_s
 drop policy if exists "Users view own notification preferences" on public.notification_preferences;
 drop policy if exists "Users upsert own notification preferences" on public.notification_preferences;
 drop policy if exists "Users update own notification preferences" on public.notification_preferences;
+drop policy if exists "Users view own push subscriptions" on public.push_subscriptions;
+drop policy if exists "Users create own push subscriptions" on public.push_subscriptions;
+drop policy if exists "Users update own push subscriptions" on public.push_subscriptions;
+drop policy if exists "Users delete own push subscriptions" on public.push_subscriptions;
 
 create policy "Members view allowed financial notes"
 on public.financial_notes for select
@@ -96,3 +122,20 @@ create policy "Users update own notification preferences"
 on public.notification_preferences for update
 using (public.is_household_member(household_id) and user_id = auth.uid())
 with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users view own push subscriptions"
+on public.push_subscriptions for select
+using (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users create own push subscriptions"
+on public.push_subscriptions for insert
+with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users update own push subscriptions"
+on public.push_subscriptions for update
+using (public.is_household_member(household_id) and user_id = auth.uid())
+with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users delete own push subscriptions"
+on public.push_subscriptions for delete
+using (public.is_household_member(household_id) and user_id = auth.uid());

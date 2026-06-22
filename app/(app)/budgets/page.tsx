@@ -9,7 +9,7 @@ import { formatCurrency, monthKey } from "@/lib/utils";
 export default async function BudgetsPage({
   searchParams
 }: {
-  searchParams?: { month?: string };
+  searchParams?: { error?: string; month?: string; saved?: string };
 }) {
   const month = searchParams?.month ?? monthKey();
   const { supabase, householdId } = await requireHousehold();
@@ -29,6 +29,18 @@ export default async function BudgetsPage({
 
   return (
     <AppShell title="Budgets">
+      {searchParams?.error ? (
+        <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
+          {searchParams.error}
+        </div>
+      ) : null}
+
+      {searchParams?.saved ? (
+        <div className="mb-4 rounded-2xl border border-app-success/30 bg-app-success/10 p-4 text-sm font-semibold text-app-success">
+          Budget saved.
+        </div>
+      ) : null}
+
       <form className="mb-4 min-w-0">
         <input className="ios-input" type="month" name="month" defaultValue={month} aria-label="Budget month" />
         <button className="ios-secondary-button mt-2 w-full min-h-11" type="submit">Change month</button>
@@ -40,7 +52,8 @@ export default async function BudgetsPage({
           <p className="mt-1 text-sm text-app-muted">Use categories like {starterEnvelopeNames.join(", ")}.</p>
         </div>
         <Field label="Category">
-          <select className="ios-input" name="category_id" required>
+          <select className="ios-input" name="category_id" required disabled={(categories ?? []).length === 0}>
+            {(categories ?? []).length === 0 ? <option value="">Add an expense category first</option> : null}
             {categories?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
         </Field>
@@ -51,7 +64,7 @@ export default async function BudgetsPage({
           <input className="ios-input" name="amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="800" required />
         </Field>
         <ToggleRow name="is_shared" label="Shared budget" description="Visible to both household members." />
-        <button className="ios-button" type="submit">Save budget</button>
+        <button className="ios-button disabled:opacity-50" type="submit" disabled={(categories ?? []).length === 0}>Save budget</button>
       </form>
 
       <div className="grid gap-3">

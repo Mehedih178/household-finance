@@ -97,7 +97,7 @@ export default async function ReportsPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
+      <section className="mt-5 grid grid-cols-2 gap-3">
         <div className="ios-card p-4">
           <p className="text-sm text-app-muted">Income</p>
           <p className="mt-1 text-2xl font-bold text-app-success">{formatCurrency(currentTotals.income)}</p>

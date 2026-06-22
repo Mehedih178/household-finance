@@ -460,6 +460,36 @@ export type Database = {
           updated_at?: string;
         };
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          household_id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+          updated_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

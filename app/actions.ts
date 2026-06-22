@@ -236,11 +236,18 @@ export async function createAccount(formData: FormData) {
 
 export async function createBudget(formData: FormData) {
   const { supabase, user, householdId } = await requireHousehold();
-  await supabase.from("budgets").upsert(
+  const month = value(formData, "month");
+  const categoryId = value(formData, "category_id");
+
+  if (!categoryId || !month) {
+    redirect("/budgets?error=Choose a category and month before saving.");
+  }
+
+  const { error } = await supabase.from("budgets").upsert(
     {
       household_id: householdId,
-      category_id: value(formData, "category_id"),
-      month: `${value(formData, "month")}-01`,
+      category_id: categoryId,
+      month: `${month}-01`,
       amount: Number(value(formData, "amount") || 0),
       is_shared: formData.get("is_shared") === "on",
       owner_id: user.id,
@@ -249,8 +256,15 @@ export async function createBudget(formData: FormData) {
     },
     { onConflict: "household_id,category_id,month" }
   );
+
+  if (error) {
+    redirect(`/budgets?month=${encodeURIComponent(month)}&error=${encodeURIComponent(error.message)}`);
+  }
+
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
+  revalidatePath("/notifications");
+  redirect(`/budgets?month=${encodeURIComponent(month)}&saved=1`);
 }
 
 export async function createCategory(formData: FormData) {

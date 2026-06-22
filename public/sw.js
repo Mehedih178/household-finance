@@ -30,3 +30,48 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(request).then((cached) => cached || caches.match("/dashboard")))
   );
 });
+
+self.addEventListener("push", (event) => {
+  let data = {
+    title: "Household Finance",
+    body: "You have a new finance update.",
+    url: "/notifications",
+    tag: "household-finance"
+  };
+
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch {
+      data.body = event.data.text();
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      badge: "/icon.svg",
+      icon: "/apple-touch-icon.svg",
+      data: { url: data.url },
+      tag: data.tag
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/notifications";
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        const existing = clients.find((client) => "focus" in client);
+        if (existing) {
+          existing.navigate(url);
+          return existing.focus();
+        }
+        return self.clients.openWindow(url);
+      })
+  );
+});
