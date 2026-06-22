@@ -22,12 +22,12 @@ export default async function BudgetsPage({
 
   return (
     <AppShell title="Budgets">
-      <form className="mb-4">
-        <input className="ios-input" type="month" name="month" defaultValue={month} />
+      <form className="mb-4 min-w-0">
+        <input className="ios-input" type="month" name="month" defaultValue={month} aria-label="Budget month" />
         <button className="ios-secondary-button mt-2 w-full min-h-11" type="submit">Change month</button>
       </form>
 
-      <form action={createBudget} className="ios-card mb-5 grid gap-4 p-4">
+      <form action={createBudget} className="ios-card mb-5 grid min-w-0 gap-4 p-4">
         <Field label="Category">
           <select className="ios-input" name="category_id" required>
             {categories?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}

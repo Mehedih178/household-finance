@@ -56,7 +56,17 @@ textarea {
   }
 
   .ios-input {
-    @apply min-h-12 w-full rounded-2xl border border-app-line bg-app-card px-4 text-base text-app-text outline-none transition focus:border-app-tint focus:ring-4 focus:ring-app-tint/15;
+    @apply min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-app-line bg-app-card px-4 text-base text-app-text outline-none transition focus:border-app-tint focus:ring-4 focus:ring-app-tint/15;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"].ios-input,
+  input[type="month"].ios-input {
+    display: block;
+    line-height: 1.5;
+    overflow: hidden;
   }
 
   .ios-button {
