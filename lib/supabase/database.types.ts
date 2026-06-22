@@ -2,6 +2,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type AccountType = "checking" | "savings" | "credit" | "cash" | "investment" | "crypto" | "loan";
 export type MoneyKind = "income" | "expense";
+export type NotificationFrequency = "instant" | "daily" | "weekly";
 export type RecurringFrequency = "weekly" | "biweekly" | "monthly" | "yearly";
 export type TargetType = "transaction" | "account" | "goal" | "household";
 
@@ -418,12 +419,54 @@ export type Database = {
           liabilities?: number;
         };
       };
+      notification_preferences: {
+        Row: {
+          id: string;
+          household_id: string;
+          user_id: string;
+          frequency: NotificationFrequency;
+          budget_alerts: boolean;
+          bills: boolean;
+          goals: boolean;
+          achievements: boolean;
+          household_activity: boolean;
+          insights: boolean;
+          recurring_transactions: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          user_id: string;
+          frequency?: NotificationFrequency;
+          budget_alerts?: boolean;
+          bills?: boolean;
+          goals?: boolean;
+          achievements?: boolean;
+          household_activity?: boolean;
+          insights?: boolean;
+          recurring_transactions?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          frequency?: NotificationFrequency;
+          budget_alerts?: boolean;
+          bills?: boolean;
+          goals?: boolean;
+          achievements?: boolean;
+          household_activity?: boolean;
+          insights?: boolean;
+          recurring_transactions?: boolean;
+          updated_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: {
       account_type: AccountType;
       money_kind: MoneyKind;
+      notification_frequency: NotificationFrequency;
       recurring_frequency: RecurringFrequency;
       invitation_status: "pending" | "accepted" | "revoked";
       member_role: "owner" | "member";

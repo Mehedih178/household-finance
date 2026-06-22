@@ -172,6 +172,22 @@ create table public.net_worth_snapshots (
   unique (household_id, snapshot_on)
 );
 
+create table public.notification_preferences (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  frequency text not null default 'daily' check (frequency in ('instant', 'daily', 'weekly')),
+  budget_alerts boolean not null default true,
+  bills boolean not null default true,
+  goals boolean not null default true,
+  achievements boolean not null default true,
+  household_activity boolean not null default true,
+  insights boolean not null default true,
+  recurring_transactions boolean not null default true,
+  updated_at timestamptz not null default now(),
+  unique (household_id, user_id)
+);
+
 create index accounts_household_idx on public.accounts(household_id);
 create index transactions_household_date_idx on public.transactions(household_id, occurred_on desc);
 create index budgets_household_month_idx on public.budgets(household_id, month);
@@ -181,6 +197,7 @@ create index goal_contributions_goal_idx on public.goal_contributions(goal_id);
 create index financial_notes_household_idx on public.financial_notes(household_id, created_at desc);
 create index financial_notes_target_idx on public.financial_notes(target_type, target_id);
 create index net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
+create index notification_preferences_user_idx on public.notification_preferences(user_id, household_id);
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -234,6 +251,7 @@ alter table public.goals enable row level security;
 alter table public.goal_contributions enable row level security;
 alter table public.financial_notes enable row level security;
 alter table public.net_worth_snapshots enable row level security;
+alter table public.notification_preferences enable row level security;
 
 create policy "Profiles are visible to household members"
 on public.profiles for select
@@ -413,3 +431,16 @@ create policy "Members update net worth snapshots"
 on public.net_worth_snapshots for update
 using (public.is_household_member(household_id))
 with check (public.is_household_member(household_id));
+
+create policy "Users view own notification preferences"
+on public.notification_preferences for select
+using (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users upsert own notification preferences"
+on public.notification_preferences for insert
+with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users update own notification preferences"
+on public.notification_preferences for update
+using (public.is_household_member(household_id) and user_id = auth.uid())
+with check (public.is_household_member(household_id) and user_id = auth.uid());

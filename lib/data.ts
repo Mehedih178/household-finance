@@ -49,7 +49,7 @@ export async function getDashboardData(month: string) {
   streakStartDate.setMonth(streakStartDate.getMonth() - 5);
   const streakStart = streakStartDate.toISOString().slice(0, 10);
 
-  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, streakBudgets, streakTransactions, members, goals, goalContributions] = await Promise.all([
+  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, streakBudgets, streakTransactions, members, goals, goalContributions, recurring, snapshots, notificationPreferences] = await Promise.all([
     supabase
       .from("transactions")
       .select("*, categories(name, color), accounts(name), profiles!transactions_created_by_fkey(full_name, email)")
@@ -66,7 +66,15 @@ export async function getDashboardData(month: string) {
     supabase.from("transactions").select("*").eq("household_id", householdId).gte("occurred_on", streakStart).lt("occurred_on", monthDates.end),
     supabase.from("household_members").select("user_id, role, profiles(full_name, email)").eq("household_id", householdId),
     supabase.from("goals").select("*").eq("household_id", householdId),
-    supabase.from("goal_contributions").select("*").eq("household_id", householdId)
+    supabase.from("goal_contributions").select("*, profiles(full_name, email)").eq("household_id", householdId),
+    supabase.from("recurring_items").select("*").eq("household_id", householdId).order("next_due_on"),
+    supabase.from("net_worth_snapshots").select("*").eq("household_id", householdId).order("snapshot_on", { ascending: false }).limit(6),
+    supabase
+      .from("notification_preferences")
+      .select("*")
+      .eq("household_id", householdId)
+      .eq("user_id", user.id)
+      .maybeSingle()
   ]);
 
   return {
@@ -83,6 +91,9 @@ export async function getDashboardData(month: string) {
     streakTransactions: streakTransactions.data ?? [],
     goals: goals.data ?? [],
     goalContributions: goalContributions.data ?? [],
-    members: members.data ?? []
+    members: members.data ?? [],
+    recurring: recurring.data ?? [],
+    snapshots: snapshots.data ?? [],
+    notificationPreferences: notificationPreferences.data
   };
 }

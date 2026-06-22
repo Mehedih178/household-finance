@@ -379,6 +379,34 @@ export async function saveNetWorthSnapshot(formData: FormData) {
   redirect("/wealth");
 }
 
+export async function saveNotificationPreferences(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const frequency = value(formData, "frequency") as "instant" | "daily" | "weekly";
+  const payload = {
+    household_id: householdId,
+    user_id: user.id,
+    frequency,
+    budget_alerts: formData.get("budget_alerts") === "on",
+    bills: formData.get("bills") === "on",
+    goals: formData.get("goals") === "on",
+    achievements: formData.get("achievements") === "on",
+    household_activity: formData.get("household_activity") === "on",
+    insights: formData.get("insights") === "on",
+    recurring_transactions: formData.get("recurring_transactions") === "on",
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabase.from("notification_preferences").upsert(payload, {
+    onConflict: "household_id,user_id"
+  });
+
+  if (error) redirect(`/notifications?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/notifications");
+  revalidatePath("/dashboard");
+  redirect("/notifications?message=Notification controls saved");
+}
+
 export async function deleteRecurringItem(formData: FormData) {
   const { supabase, householdId } = await requireHousehold();
   await supabase

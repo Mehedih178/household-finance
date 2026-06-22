@@ -15,7 +15,7 @@ Mobile-first personal finance PWA for shared household budgeting. It uses Next.j
 - Financial notes attached to transactions, accounts, goals, or the household
 - Monthly finance meeting screen for reviewing income, expenses, savings, goals, and big purchases together
 - Wealth dashboard with assets, liabilities, net worth snapshots, milestones, and a simple FIRE calculator
-- Alerts screen for budget warnings, goal milestones, recurring bills due, and weekly summaries
+- Finance Inbox with smart notifications, unread dashboard badge, morning brief, budget pace warnings, goal milestones, recurring bill reminders, household activity, achievements, weekly summaries, and notification controls
 - iPhone-focused PWA metadata, safe-area layout, bottom tab navigation, and light/dark mode
 
 ## Setup
@@ -83,6 +83,7 @@ The schema includes:
 - `goal_contributions`
 - `financial_notes`
 - `net_worth_snapshots`
+- `notification_preferences`
 
 RLS policies limit household data to members. Personal records are visible only to the owner, while shared records are visible to all household members.
 
@@ -96,4 +97,4 @@ supabase/2026-06-22-feed-wealth-notes.sql
 
 ## Current MVP Scope
 
-Recurring items are tracked and can generate due-soon alerts, but they do not automatically create transactions yet. The alerts screen is an in-app notification center; push notifications can be added later.
+Recurring items are tracked and can generate due-soon alerts, but they do not automatically create transactions yet. The Finance Inbox is an in-app notification center; native push notifications can be added later.

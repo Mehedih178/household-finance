@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CashFlowChart } from "@/components/charts";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatCard } from "@/components/stat-card";
 import { budgetAlert, daysLeftInMonth } from "@/lib/budgeting";
 import { getDashboardData } from "@/lib/data";
+import { defaultNotificationPreferences, generateFinanceInbox } from "@/lib/finance-inbox";
 import { completedGoals, savingsStreak, savingsTotal, underBudgetStreak } from "@/lib/gamification";
 import { formatCurrency, monthKey } from "@/lib/utils";
 
@@ -27,6 +28,18 @@ export default async function DashboardPage() {
   });
   const savings = savingsTotal(data.transactions);
   const completed = completedGoals(data.goals, data.goalContributions);
+  const inbox = generateFinanceInbox({
+    accounts: data.accounts,
+    budgets: data.budgets,
+    contributions: data.goalContributions,
+    currentMonthTransactions: data.transactions,
+    goals: data.goals,
+    previousMonthTransactions: data.previousTransactions,
+    preferences: data.notificationPreferences ?? defaultNotificationPreferences,
+    recurring: data.recurring,
+    snapshots: data.snapshots,
+    userId: data.user.id
+  });
 
   const chartData = Array.from({ length: 4 }).map((_, index) => {
     const week = index + 1;
@@ -45,11 +58,37 @@ export default async function DashboardPage() {
     <AppShell
       title="Today"
       action={
-        <Link href="/transactions/new" className="ios-button h-11 min-h-11 rounded-full px-4">
-          <Plus size={20} />
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/notifications" className="ios-secondary-button relative h-11 min-h-11 rounded-full px-4" aria-label="Finance inbox">
+            <Bell size={19} />
+            {inbox.unreadCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-app-danger px-1 text-[11px] font-bold text-white">
+                {Math.min(9, inbox.unreadCount)}
+              </span>
+            ) : null}
+          </Link>
+          <Link href="/transactions/new" className="ios-button h-11 min-h-11 rounded-full px-4">
+            <Plus size={20} />
+          </Link>
+        </div>
       }
     >
+      <Link href="/notifications" className="ios-card mb-5 block p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-app-muted">Good morning</p>
+            <p className="mt-1 text-xl font-bold text-app-text">You have {inbox.unreadCount} finance update{inbox.unreadCount === 1 ? "" : "s"}</p>
+          </div>
+          <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Inbox</span>
+        </div>
+        <ul className="mt-3 grid gap-1 text-sm text-app-muted">
+          {inbox.brief.summary.map((line) => (
+            <li key={line}>• {line}</li>
+          ))}
+        </ul>
+        <p className="mt-3 rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{inbox.brief.tip}</p>
+      </Link>
+
       <section className="rounded-[30px] bg-app-tint p-5 text-white shadow-ios">
         <p className="text-sm font-semibold opacity-80">Household cash flow</p>
         <p className="mt-2 text-4xl font-bold tracking-tight">{formatCurrency(balance)}</p>
