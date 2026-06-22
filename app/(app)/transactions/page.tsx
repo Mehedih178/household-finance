@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { requireHousehold } from "@/lib/data";
 import { formatCurrency } from "@/lib/utils";
@@ -7,7 +7,7 @@ import { formatCurrency } from "@/lib/utils";
 export default async function TransactionsPage({
   searchParams
 }: {
-  searchParams?: { category?: string; account?: string; kind?: string };
+  searchParams?: { category?: string; account?: string; imported?: string; kind?: string };
 }) {
   const { supabase, householdId } = await requireHousehold();
   let query = supabase
@@ -29,8 +29,23 @@ export default async function TransactionsPage({
   return (
     <AppShell
       title="Activity"
-      action={<Link href="/transactions/new" className="ios-button h-11 min-h-11 rounded-full px-4"><Plus size={20} /></Link>}
+      action={
+        <div className="flex gap-2">
+          <Link href="/transactions/import" className="ios-secondary-button h-11 min-h-11 rounded-full px-4" aria-label="Import transactions">
+            <Upload size={19} />
+          </Link>
+          <Link href="/transactions/new" className="ios-button h-11 min-h-11 rounded-full px-4" aria-label="Add transaction">
+            <Plus size={20} />
+          </Link>
+        </div>
+      }
     >
+      {searchParams?.imported ? (
+        <div className="mb-4 rounded-2xl border border-app-success/30 bg-app-success/10 p-4 text-sm font-semibold text-app-success">
+          Imported {searchParams.imported} transactions.
+        </div>
+      ) : null}
+
       <form className="mb-4 grid grid-cols-3 gap-2">
         <select className="ios-input px-2 text-sm" name="kind" defaultValue={searchParams?.kind ?? ""}>
           <option value="">All</option>

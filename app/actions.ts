@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVE_HOUSEHOLD_COOKIE, requireHousehold } from "@/lib/data";
+import { parseTransactionCsv } from "@/lib/csv-import";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -323,6 +324,62 @@ export async function saveTransaction(formData: FormData) {
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   redirect("/transactions");
+}
+
+export async function importTransactions(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const file = formData.get("file");
+  const fallbackAccountId = value(formData, "account_id") || null;
+  const fallbackCategoryId = value(formData, "category_id") || null;
+  const isShared = formData.get("is_shared") === "on";
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirect("/transactions/import?error=Choose a CSV file to import");
+  }
+
+  const csv = await file.text();
+  const imported = parseTransactionCsv(csv).slice(0, 500);
+
+  if (imported.length === 0) {
+    redirect("/transactions/import?error=No valid transactions found in that CSV");
+  }
+
+  const [{ data: categories }, { data: accounts }] = await Promise.all([
+    supabase.from("categories").select("id, name").eq("household_id", householdId),
+    supabase.from("accounts").select("id, name").eq("household_id", householdId)
+  ]);
+
+  const categoryMap = new Map(
+    (categories ?? []).map((category) => [String(category.name).toLowerCase(), category.id])
+  );
+  const accountMap = new Map(
+    (accounts ?? []).map((account) => [String(account.name).toLowerCase(), account.id])
+  );
+
+  const payload = imported.map((transaction) => ({
+    household_id: householdId,
+    account_id: transaction.accountName
+      ? accountMap.get(transaction.accountName.toLowerCase()) ?? fallbackAccountId
+      : fallbackAccountId,
+    category_id: transaction.categoryName
+      ? categoryMap.get(transaction.categoryName.toLowerCase()) ?? fallbackCategoryId
+      : fallbackCategoryId,
+    amount: transaction.amount,
+    kind: transaction.kind,
+    description: transaction.description,
+    occurred_on: transaction.occurred_on,
+    is_shared: isShared,
+    owner_id: user.id,
+    created_by: user.id,
+    updated_by: user.id
+  }));
+
+  const { error } = await supabase.from("transactions").insert(payload);
+  if (error) redirect(`/transactions/import?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  redirect(`/transactions?imported=${imported.length}`);
 }
 
 export async function deleteTransaction(formData: FormData) {

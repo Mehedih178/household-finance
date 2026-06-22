@@ -9,6 +9,7 @@ Mobile-first personal finance PWA for shared household budgeting. It uses Next.j
 - Shared and personal visibility controls for accounts, budgets, transactions, and recurring items
 - Dashboard with household cash flow, recent activity, and budget progress
 - Transaction create, view, edit, delete, filtering, and audit metadata
+- CSV transaction import for free bank-export workflows
 - Categories, monthly budgets, accounts, and basic spending reports
 - iPhone-focused PWA metadata, safe-area layout, bottom tab navigation, and light/dark mode
 
@@ -46,6 +47,19 @@ npm run dev
 - `public/manifest.json` defines standalone display, portrait orientation, theme colors, and placeholder icons.
 - `public/sw.js` caches the app shell and recent GET requests in production.
 - For App Store-grade polish, replace the SVG placeholders with real PNG icons at 180, 192, and 512 pixels.
+
+## CSV Import
+
+Use **Activity → Import** to upload bank-exported CSV files. The importer recognizes common headers:
+
+- `Date`
+- `Description`, `Name`, `Merchant`, `Memo`, or `Payee`
+- `Amount`, or separate `Debit` / `Credit`
+- `Type`
+- `Category`
+- `Account`
+
+Negative amounts import as expenses. Positive amounts import as income. If category or account names match existing app records, they are linked automatically.
 
 ## Supabase Model
 
