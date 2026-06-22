@@ -10,14 +10,29 @@ function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function safeNextPath(path: string) {
+  return path.startsWith("/") ? path : "/dashboard";
+}
+
+function authErrorMessage(message: string) {
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid login")) return "Email or password is incorrect.";
+  if (lower.includes("email not confirmed")) return "Please verify your email before signing in.";
+  if (lower.includes("already registered")) return "An account already exists for this email. Try signing in instead.";
+  if (lower.includes("password")) return message;
+  return "Something went wrong. Please try again.";
+}
+
 export async function signIn(formData: FormData) {
   const supabase = createClient();
   const email = value(formData, "email");
   const password = value(formData, "password");
   const next = value(formData, "next") || "/dashboard";
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) redirect(`/auth?error=${encodeURIComponent(error.message)}`);
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  if (error) {
+    redirect(`/auth?next=${encodeURIComponent(safeNextPath(next))}&error=${encodeURIComponent(authErrorMessage(error.message))}`);
+  }
+  redirect(safeNextPath(next));
 }
 
 async function ensureProfile() {
@@ -44,17 +59,24 @@ export async function signUp(formData: FormData) {
   const next = value(formData, "next") || "/dashboard";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${siteUrl}/callback?next=${encodeURIComponent(safeNextPath(next))}`,
       data: { full_name: fullName }
     }
   });
 
-  if (error) redirect(`/auth?error=${encodeURIComponent(error.message)}`);
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  if (error) {
+    redirect(`/auth?next=${encodeURIComponent(safeNextPath(next))}&error=${encodeURIComponent(authErrorMessage(error.message))}`);
+  }
+
+  if (!data.session) {
+    redirect(`/auth/check-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(safeNextPath(next))}`);
+  }
+
+  redirect(safeNextPath(next));
 }
 
 export async function signOut() {

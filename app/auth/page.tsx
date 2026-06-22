@@ -31,6 +31,9 @@ export default function AuthPage({
             Sign in
           </summary>
           <form action={signIn} className="grid gap-3 px-5 pb-5">
+            <p className="text-sm leading-6 text-app-muted">
+              Use this after your email is verified. If you came from an invite, you will return to it after signing in.
+            </p>
             <input type="hidden" name="next" value={next} />
             <input className="ios-input" name="email" type="email" placeholder="Email" required />
             <input className="ios-input" name="password" type="password" placeholder="Password" required />
@@ -43,6 +46,9 @@ export default function AuthPage({
             Create account
           </summary>
           <form action={signUp} className="grid gap-3 px-5 pb-5">
+            <p className="text-sm leading-6 text-app-muted">
+              After creating an account, check your email and tap the verification link. Keep the check-email screen open until you verify.
+            </p>
             <input type="hidden" name="next" value={next} />
             <input className="ios-input" name="full_name" placeholder="Full name" required />
             <input className="ios-input" name="email" type="email" placeholder="Email" required />
