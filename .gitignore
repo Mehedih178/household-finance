@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# local env
+.env*.local
+
+# caches
+.npm-cache/
+*.tsbuildinfo
+
+# system files
+.DS_Store
+
+# local workspace scratch/output
+work/
+outputs/
