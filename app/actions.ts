@@ -19,8 +19,12 @@ function authErrorMessage(message: string) {
   if (lower.includes("invalid login")) return "Email or password is incorrect.";
   if (lower.includes("email not confirmed")) return "Please verify your email before signing in.";
   if (lower.includes("already registered")) return "An account already exists for this email. Try signing in instead.";
+  if (lower.includes("user already registered")) return "An account already exists for this email. Try signing in instead.";
+  if (lower.includes("signup is disabled")) return "New account signup is disabled in Supabase Auth settings.";
+  if (lower.includes("email rate limit")) return "Too many verification emails were requested. Wait a few minutes and try again.";
+  if (lower.includes("database error")) return "Supabase could not create the account because of a database trigger or profile row issue.";
   if (lower.includes("password")) return message;
-  return "Something went wrong. Please try again.";
+  return message || "Something went wrong. Please try again.";
 }
 
 export async function signIn(formData: FormData) {
