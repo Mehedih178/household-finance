@@ -56,7 +56,7 @@ export async function getDashboardData(month: string) {
       .eq("household_id", householdId)
       .gte("occurred_on", monthDates.start)
       .lt("occurred_on", monthDates.end)
-      .order("occurred_on", { ascending: false }),
+      .order("created_at", { ascending: false }),
     supabase.from("categories").select("*").eq("household_id", householdId).order("name"),
     supabase.from("accounts").select("*").eq("household_id", householdId).order("name"),
     supabase.from("budgets").select("*, categories(name, color)").eq("household_id", householdId).eq("month", monthDates.start),

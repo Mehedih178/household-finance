@@ -14,7 +14,7 @@ export default async function TransactionsPage({
     .from("transactions")
     .select("*, categories(name, color), accounts(name), profiles!transactions_created_by_fkey(full_name, email)")
     .eq("household_id", householdId)
-    .order("occurred_on", { ascending: false });
+    .order("created_at", { ascending: false });
 
   if (searchParams?.category) query = query.eq("category_id", searchParams.category);
   if (searchParams?.account) query = query.eq("account_id", searchParams.account);
