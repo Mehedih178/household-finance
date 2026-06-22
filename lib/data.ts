@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+
+export const ACTIVE_HOUSEHOLD_COOKIE = "active_household_id";
 
 export async function getSessionContext() {
   const supabase = createClient();
@@ -9,13 +12,19 @@ export async function getSessionContext() {
 
   if (!user) redirect("/auth");
 
-  const { data: member } = await supabase
+  const { data: memberships } = await supabase
     .from("household_members")
     .select("household_id, role, households(id, name)")
     .eq("user_id", user.id)
-    .maybeSingle();
+    .order("joined_at", { ascending: false });
 
-  return { supabase, user, member };
+  const activeHouseholdId = cookies().get(ACTIVE_HOUSEHOLD_COOKIE)?.value;
+  const member =
+    memberships?.find((membership) => membership.household_id === activeHouseholdId) ??
+    memberships?.[0] ??
+    null;
+
+  return { supabase, user, member, memberships: memberships ?? [] };
 }
 
 export async function requireHousehold() {

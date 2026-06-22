@@ -1,9 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requireHousehold } from "@/lib/data";
+import { ACTIVE_HOUSEHOLD_COOKIE, requireHousehold } from "@/lib/data";
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -13,38 +14,13 @@ export async function signIn(formData: FormData) {
   const supabase = createClient();
   const email = value(formData, "email");
   const password = value(formData, "password");
+  const next = value(formData, "next") || "/dashboard";
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) redirect(`/auth?error=${encodeURIComponent(error.message)}`);
-  redirect("/dashboard");
+  redirect(next.startsWith("/") ? next : "/dashboard");
 }
 
-export async function signUp(formData: FormData) {
-  const supabase = createClient();
-  const email = value(formData, "email");
-  const password = value(formData, "password");
-  const fullName = value(formData, "full_name");
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${siteUrl}/callback`,
-      data: { full_name: fullName }
-    }
-  });
-
-  if (error) redirect(`/auth?error=${encodeURIComponent(error.message)}`);
-  redirect("/onboarding/household");
-}
-
-export async function signOut() {
-  const supabase = createClient();
-  await supabase.auth.signOut();
-  redirect("/auth");
-}
-
-export async function createHousehold(formData: FormData) {
+async function ensureProfile() {
   const supabase = createClient();
   const {
     data: { user }
@@ -56,6 +32,39 @@ export async function createHousehold(formData: FormData) {
     email: user.email ?? "",
     full_name: typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name : null
   });
+
+  return { supabase, user };
+}
+
+export async function signUp(formData: FormData) {
+  const supabase = createClient();
+  const email = value(formData, "email");
+  const password = value(formData, "password");
+  const fullName = value(formData, "full_name");
+  const next = value(formData, "next") || "/dashboard";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${siteUrl}/callback?next=${encodeURIComponent(next)}`,
+      data: { full_name: fullName }
+    }
+  });
+
+  if (error) redirect(`/auth?error=${encodeURIComponent(error.message)}`);
+  redirect(next.startsWith("/") ? next : "/dashboard");
+}
+
+export async function signOut() {
+  const supabase = createClient();
+  await supabase.auth.signOut();
+  redirect("/auth");
+}
+
+export async function createHousehold(formData: FormData) {
+  const { supabase, user } = await ensureProfile();
 
   const householdName = value(formData, "name") || "Our Household";
   const { data: household, error } = await supabase
@@ -70,6 +79,11 @@ export async function createHousehold(formData: FormData) {
     household_id: household.id,
     user_id: user.id,
     role: "owner"
+  });
+  cookies().set(ACTIVE_HOUSEHOLD_COOKIE, household.id, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
   });
 
   const starterCategories = [
@@ -95,6 +109,27 @@ export async function createHousehold(formData: FormData) {
   redirect("/onboarding/invite");
 }
 
+export async function switchHousehold(formData: FormData) {
+  const { supabase, user } = await ensureProfile();
+  const householdId = value(formData, "household_id");
+  const { data: membership } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", user.id)
+    .eq("household_id", householdId)
+    .maybeSingle();
+
+  if (!membership) redirect("/settings?error=Household not found");
+
+  cookies().set(ACTIVE_HOUSEHOLD_COOKIE, householdId, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
+  });
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
+}
+
 export async function createInvitation(formData: FormData) {
   const { supabase, user, householdId } = await requireHousehold();
   const email = value(formData, "email");
@@ -114,11 +149,7 @@ export async function createInvitation(formData: FormData) {
 }
 
 export async function acceptInvitation(formData: FormData) {
-  const supabase = createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
+  const { supabase, user } = await ensureProfile();
 
   const token = value(formData, "token");
   const { data: invite, error } = await supabase
@@ -130,11 +161,14 @@ export async function acceptInvitation(formData: FormData) {
 
   if (error || !invite) redirect(`/invite/${token}?error=Invite not found or already used`);
 
-  await supabase.from("household_members").insert({
-    household_id: invite.household_id,
-    user_id: user.id,
-    role: "member"
-  });
+  await supabase.from("household_members").upsert(
+    {
+      household_id: invite.household_id,
+      user_id: user.id,
+      role: "member"
+    },
+    { onConflict: "household_id,user_id" }
+  );
 
   await supabase
     .from("invitations")
@@ -144,6 +178,12 @@ export async function acceptInvitation(formData: FormData) {
       accepted_at: new Date().toISOString()
     })
     .eq("id", invite.id);
+
+  cookies().set(ACTIVE_HOUSEHOLD_COOKIE, invite.household_id, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production"
+  });
 
   redirect("/dashboard");
 }

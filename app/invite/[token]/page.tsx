@@ -46,7 +46,7 @@ export default async function AcceptInvitePage({
             <button className="ios-button w-full" type="submit">Accept invite</button>
           </form>
         ) : (
-          <Link href="/auth" className="ios-button mt-6 w-full">
+          <Link href={`/auth?next=${encodeURIComponent(`/invite/${params.token}`)}`} className="ios-button mt-6 w-full">
             Sign in to accept
           </Link>
         )}

@@ -287,6 +287,14 @@ create policy "Members view invitations"
 on public.invitations for select
 using (public.is_household_member(household_id));
 
+create policy "Invitees view pending invitations"
+on public.invitations for select
+using (
+  status = 'pending'
+  and expires_at > now()
+  and lower(email) = lower(auth.jwt()->>'email')
+);
+
 create policy "Members create invitations"
 on public.invitations for insert
 with check (public.is_household_member(household_id) and invited_by = auth.uid());

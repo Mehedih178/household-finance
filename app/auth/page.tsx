@@ -3,8 +3,10 @@ import { signIn, signUp } from "@/app/actions";
 export default function AuthPage({
   searchParams
 }: {
-  searchParams?: { error?: string };
+  searchParams?: { error?: string; next?: string };
 }) {
+  const next = searchParams?.next?.startsWith("/") ? searchParams.next : "/dashboard";
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-end bg-app-bg px-5 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]">
       <section className="mb-8">
@@ -29,6 +31,7 @@ export default function AuthPage({
             Sign in
           </summary>
           <form action={signIn} className="grid gap-3 px-5 pb-5">
+            <input type="hidden" name="next" value={next} />
             <input className="ios-input" name="email" type="email" placeholder="Email" required />
             <input className="ios-input" name="password" type="password" placeholder="Password" required />
             <button className="ios-button" type="submit">Continue</button>
@@ -40,6 +43,7 @@ export default function AuthPage({
             Create account
           </summary>
           <form action={signUp} className="grid gap-3 px-5 pb-5">
+            <input type="hidden" name="next" value={next} />
             <input className="ios-input" name="full_name" placeholder="Full name" required />
             <input className="ios-input" name="email" type="email" placeholder="Email" required />
             <input className="ios-input" name="password" type="password" placeholder="Password" minLength={8} required />

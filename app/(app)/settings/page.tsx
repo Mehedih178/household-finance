@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { createCategory, signOut } from "@/app/actions";
+import { createCategory, signOut, switchHousehold } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { requireHousehold } from "@/lib/data";
 
 export default async function SettingsPage() {
-  const { supabase, householdId, householdName } = await requireHousehold();
+  const { supabase, householdId, householdName, memberships } = await requireHousehold();
   const [{ data: categories }, { data: members }] = await Promise.all([
     supabase.from("categories").select("*").eq("household_id", householdId).order("kind").order("name"),
     supabase.from("household_members").select("role, profiles(full_name, email)").eq("household_id", householdId)
@@ -17,6 +17,28 @@ export default async function SettingsPage() {
       <section className="ios-card p-4">
         <p className="text-sm text-app-muted">Household</p>
         <p className="mt-1 text-xl font-bold text-app-text">{householdName}</p>
+        {memberships.length > 1 ? (
+          <form action={switchHousehold} className="mt-4 grid gap-2">
+            <label className="text-sm font-semibold text-app-muted" htmlFor="household_id">
+              Active household
+            </label>
+            <select className="ios-input" id="household_id" name="household_id" defaultValue={householdId}>
+              {memberships.map((membership) => {
+                const household = Array.isArray(membership.households)
+                  ? membership.households[0]
+                  : membership.households;
+                return (
+                  <option key={membership.household_id} value={membership.household_id}>
+                    {household?.name ?? "Household"} ({membership.role})
+                  </option>
+                );
+              })}
+            </select>
+            <button className="ios-secondary-button min-h-11" type="submit">
+              Switch household
+            </button>
+          </form>
+        ) : null}
         <div className="mt-4 grid gap-3">
           <Link href="/onboarding/invite" className="ios-secondary-button w-full">Invite spouse</Link>
           <Link href="/accounts" className="ios-secondary-button w-full">Accounts</Link>
