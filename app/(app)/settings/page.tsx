@@ -42,6 +42,7 @@ export default async function SettingsPage() {
         ) : null}
         <div className="mt-4 grid gap-3">
           <Link href="/onboarding/invite" className="ios-secondary-button w-full">Invite spouse</Link>
+          <Link href="/goals" className="ios-secondary-button w-full">Shared goals</Link>
           <Link href="/accounts" className="ios-secondary-button w-full">Accounts</Link>
           <Link href="/recurring" className="ios-secondary-button w-full">Recurring items</Link>
           <Link href="/profile" className="ios-secondary-button w-full">Profile</Link>

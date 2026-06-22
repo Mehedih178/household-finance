@@ -6,6 +6,7 @@ import { ProgressBar } from "@/components/progress-bar";
 import { StatCard } from "@/components/stat-card";
 import { budgetAlert, daysLeftInMonth } from "@/lib/budgeting";
 import { getDashboardData } from "@/lib/data";
+import { completedGoals, savingsStreak, savingsTotal, underBudgetStreak } from "@/lib/gamification";
 import { formatCurrency, monthKey } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -15,6 +16,17 @@ export default async function DashboardPage() {
   const expenses = data.transactions.filter((t) => t.kind === "expense").reduce((sum, t) => sum + Number(t.amount), 0);
   const balance = income - expenses;
   const daysLeft = daysLeftInMonth(currentMonth);
+  const budgetStreak = underBudgetStreak({
+    budgets: data.streakBudgets,
+    month: currentMonth,
+    transactions: data.streakTransactions
+  });
+  const monthlySavingsStreak = savingsStreak({
+    month: currentMonth,
+    transactions: data.streakTransactions
+  });
+  const savings = savingsTotal(data.transactions);
+  const completed = completedGoals(data.goals, data.goalContributions);
 
   const chartData = Array.from({ length: 4 }).map((_, index) => {
     const week = index + 1;
@@ -55,6 +67,46 @@ export default async function DashboardPage() {
           <span className="text-sm text-app-muted">Month</span>
         </div>
         <CashFlowChart data={chartData} />
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-app-text">Wins</h2>
+          <Link href="/goals" className="text-sm font-semibold text-app-tint">Goals</Link>
+        </div>
+        <div className="grid gap-3">
+          <div className="ios-card p-4">
+            <p className="text-sm font-semibold text-app-muted">Savings streak</p>
+            <p className="mt-2 text-xl font-bold text-app-text">
+              {budgetStreak > 0 ? `Under budget ${budgetStreak} month${budgetStreak === 1 ? "" : "s"} in a row` : "Keep going this month"}
+            </p>
+            <p className="mt-1 text-sm text-app-muted">
+              {budgetStreak >= 4 ? "Achievement unlocked: under budget 4 months in a row." : "Stay inside your envelopes to build a streak."}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="ios-card p-4">
+              <p className="text-sm text-app-muted">First $1,000 saved</p>
+              <p className={savings >= 1000 ? "mt-2 font-bold text-app-success" : "mt-2 font-bold text-app-text"}>
+                {savings >= 1000 ? "Unlocked" : `${formatCurrency(Math.max(0, 1000 - savings))} left`}
+              </p>
+            </div>
+            <div className="ios-card p-4">
+              <p className="text-sm text-app-muted">6-month savings streak</p>
+              <p className={monthlySavingsStreak >= 6 ? "mt-2 font-bold text-app-success" : "mt-2 font-bold text-app-text"}>
+                {monthlySavingsStreak >= 6 ? "Unlocked" : `${monthlySavingsStreak}/6`}
+              </p>
+            </div>
+          </div>
+          {completed.length > 0 ? (
+            <div className="ios-card p-4">
+              <p className="text-sm text-app-muted">Completed goals</p>
+              <p className="mt-2 font-bold text-app-success">
+                {completed.map((goal) => `${goal.name} completed`).join(", ")}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <section className="mt-5">

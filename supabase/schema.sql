@@ -121,10 +121,39 @@ create table public.invitations (
   accepted_at timestamptz
 );
 
+create table public.goals (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  name text not null,
+  target_amount numeric(12, 2) not null check (target_amount > 0),
+  target_date date,
+  color text not null default '#007aff',
+  icon text not null default 'flag',
+  is_shared boolean not null default true,
+  owner_id uuid not null references public.profiles(id),
+  created_by uuid not null references public.profiles(id),
+  updated_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.goal_contributions (
+  id uuid primary key default gen_random_uuid(),
+  goal_id uuid not null references public.goals(id) on delete cascade,
+  household_id uuid not null references public.households(id) on delete cascade,
+  amount numeric(12, 2) not null check (amount > 0),
+  note text,
+  contributed_on date not null default current_date,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+
 create index accounts_household_idx on public.accounts(household_id);
 create index transactions_household_date_idx on public.transactions(household_id, occurred_on desc);
 create index budgets_household_month_idx on public.budgets(household_id, month);
 create index invitations_token_idx on public.invitations(token);
+create index goals_household_idx on public.goals(household_id);
+create index goal_contributions_goal_idx on public.goal_contributions(goal_id);
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -174,6 +203,8 @@ alter table public.transactions enable row level security;
 alter table public.budgets enable row level security;
 alter table public.recurring_items enable row level security;
 alter table public.invitations enable row level security;
+alter table public.goals enable row level security;
+alter table public.goal_contributions enable row level security;
 
 create policy "Profiles are visible to household members"
 on public.profiles for select
@@ -303,3 +334,28 @@ create policy "Invitees can accept invitations"
 on public.invitations for update
 using (status = 'pending')
 with check (accepted_by = auth.uid());
+
+create policy "Members view allowed goals"
+on public.goals for select
+using (public.is_household_member(household_id) and public.can_view_private(owner_id, is_shared));
+
+create policy "Members create goals"
+on public.goals for insert
+with check (public.is_household_member(household_id) and owner_id = auth.uid() and created_by = auth.uid());
+
+create policy "Owners manage own goals"
+on public.goals for update
+using (public.is_household_member(household_id) and owner_id = auth.uid())
+with check (public.is_household_member(household_id) and owner_id = auth.uid());
+
+create policy "Owners delete own goals"
+on public.goals for delete
+using (public.is_household_member(household_id) and owner_id = auth.uid());
+
+create policy "Members view goal contributions"
+on public.goal_contributions for select
+using (public.is_household_member(household_id));
+
+create policy "Members create goal contributions"
+on public.goal_contributions for insert
+with check (public.is_household_member(household_id) and created_by = auth.uid());

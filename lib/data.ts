@@ -45,8 +45,11 @@ export async function getDashboardData(month: string) {
   const { supabase, householdId, householdName, user } = await requireHousehold();
   const monthDates = monthRange(month);
   const previousDates = monthRange(previousMonthKey(month));
+  const streakStartDate = new Date(`${monthDates.start}T00:00:00`);
+  streakStartDate.setMonth(streakStartDate.getMonth() - 5);
+  const streakStart = streakStartDate.toISOString().slice(0, 10);
 
-  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, members] = await Promise.all([
+  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, streakBudgets, streakTransactions, members, goals, goalContributions] = await Promise.all([
     supabase
       .from("transactions")
       .select("*, categories(name, color), accounts(name), profiles!transactions_created_by_fkey(full_name, email)")
@@ -59,7 +62,11 @@ export async function getDashboardData(month: string) {
     supabase.from("budgets").select("*, categories(name, color)").eq("household_id", householdId).eq("month", monthDates.start),
     supabase.from("budgets").select("*, categories(name, color)").eq("household_id", householdId).eq("month", previousDates.start),
     supabase.from("transactions").select("*").eq("household_id", householdId).eq("kind", "expense").gte("occurred_on", previousDates.start).lt("occurred_on", previousDates.end),
-    supabase.from("household_members").select("user_id, role, profiles(full_name, email)").eq("household_id", householdId)
+    supabase.from("budgets").select("*").eq("household_id", householdId).gte("month", streakStart),
+    supabase.from("transactions").select("*").eq("household_id", householdId).gte("occurred_on", streakStart).lt("occurred_on", monthDates.end),
+    supabase.from("household_members").select("user_id, role, profiles(full_name, email)").eq("household_id", householdId),
+    supabase.from("goals").select("*").eq("household_id", householdId),
+    supabase.from("goal_contributions").select("*").eq("household_id", householdId)
   ]);
 
   return {
@@ -72,6 +79,10 @@ export async function getDashboardData(month: string) {
     budgets: budgets.data ?? [],
     previousBudgets: previousBudgets.data ?? [],
     previousTransactions: previousTransactions.data ?? [],
+    streakBudgets: streakBudgets.data ?? [],
+    streakTransactions: streakTransactions.data ?? [],
+    goals: goals.data ?? [],
+    goalContributions: goalContributions.data ?? [],
     members: members.data ?? []
   };
 }

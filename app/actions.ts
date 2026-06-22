@@ -287,6 +287,44 @@ export async function createRecurringItem(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function createGoal(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const { error } = await supabase.from("goals").insert({
+    household_id: householdId,
+    name: value(formData, "name"),
+    target_amount: Number(value(formData, "target_amount") || 0),
+    target_date: value(formData, "target_date") || null,
+    color: value(formData, "color") || "#007aff",
+    icon: value(formData, "icon") || "flag",
+    is_shared: formData.get("is_shared") === "on",
+    owner_id: user.id,
+    created_by: user.id,
+    updated_by: user.id
+  });
+
+  if (error) redirect(`/goals?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/goals");
+  revalidatePath("/dashboard");
+}
+
+export async function addGoalContribution(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const goalId = value(formData, "goal_id");
+  const amount = Number(value(formData, "amount") || 0);
+  const { error } = await supabase.from("goal_contributions").insert({
+    goal_id: goalId,
+    household_id: householdId,
+    amount,
+    note: value(formData, "note") || null,
+    contributed_on: value(formData, "contributed_on") || new Date().toISOString().slice(0, 10),
+    created_by: user.id
+  });
+
+  if (error) redirect(`/goals?error=${encodeURIComponent(error.message)}`);
+  revalidatePath("/goals");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteRecurringItem(formData: FormData) {
   const { supabase, householdId } = await requireHousehold();
   await supabase
