@@ -1,0 +1,64 @@
+alter type public.account_type add value if not exists 'crypto';
+
+create table if not exists public.financial_notes (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  target_type text not null check (target_type in ('transaction', 'account', 'goal', 'household')),
+  target_id uuid,
+  body text not null,
+  is_shared boolean not null default true,
+  owner_id uuid not null references public.profiles(id),
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.net_worth_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  snapshot_on date not null default current_date,
+  assets numeric(12, 2) not null default 0,
+  liabilities numeric(12, 2) not null default 0,
+  net_worth numeric(12, 2) generated always as (assets - liabilities) stored,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now(),
+  unique (household_id, snapshot_on)
+);
+
+create index if not exists financial_notes_household_idx on public.financial_notes(household_id, created_at desc);
+create index if not exists financial_notes_target_idx on public.financial_notes(target_type, target_id);
+create index if not exists net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
+
+alter table public.financial_notes enable row level security;
+alter table public.net_worth_snapshots enable row level security;
+
+drop policy if exists "Members view allowed financial notes" on public.financial_notes;
+drop policy if exists "Members create financial notes" on public.financial_notes;
+drop policy if exists "Owners delete own financial notes" on public.financial_notes;
+drop policy if exists "Members view net worth snapshots" on public.net_worth_snapshots;
+drop policy if exists "Members create net worth snapshots" on public.net_worth_snapshots;
+drop policy if exists "Members update net worth snapshots" on public.net_worth_snapshots;
+
+create policy "Members view allowed financial notes"
+on public.financial_notes for select
+using (public.is_household_member(household_id) and public.can_view_private(owner_id, is_shared));
+
+create policy "Members create financial notes"
+on public.financial_notes for insert
+with check (public.is_household_member(household_id) and owner_id = auth.uid() and created_by = auth.uid());
+
+create policy "Owners delete own financial notes"
+on public.financial_notes for delete
+using (public.is_household_member(household_id) and owner_id = auth.uid());
+
+create policy "Members view net worth snapshots"
+on public.net_worth_snapshots for select
+using (public.is_household_member(household_id));
+
+create policy "Members create net worth snapshots"
+on public.net_worth_snapshots for insert
+with check (public.is_household_member(household_id) and created_by = auth.uid());
+
+create policy "Members update net worth snapshots"
+on public.net_worth_snapshots for update
+using (public.is_household_member(household_id))
+with check (public.is_household_member(household_id));

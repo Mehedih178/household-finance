@@ -1,4 +1,4 @@
-import { addGoalContribution, createGoal } from "@/app/actions";
+import { addGoalContribution, createFinancialNote, createGoal } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field, ToggleRow } from "@/components/form-fields";
 import { ProgressBar } from "@/components/progress-bar";
@@ -11,9 +11,15 @@ export default async function GoalsPage({
   searchParams?: { error?: string };
 }) {
   const { supabase, householdId } = await requireHousehold();
-  const [{ data: goals }, { data: contributions }] = await Promise.all([
+  const [{ data: goals }, { data: contributions }, { data: notes }] = await Promise.all([
     supabase.from("goals").select("*").eq("household_id", householdId).order("created_at", { ascending: false }),
-    supabase.from("goal_contributions").select("*, profiles(full_name, email)").eq("household_id", householdId).order("contributed_on", { ascending: false })
+    supabase.from("goal_contributions").select("*, profiles(full_name, email)").eq("household_id", householdId).order("contributed_on", { ascending: false }),
+    supabase
+      .from("financial_notes")
+      .select("*, profiles!financial_notes_created_by_fkey(full_name, email)")
+      .eq("household_id", householdId)
+      .eq("target_type", "goal")
+      .order("created_at", { ascending: false })
   ]);
 
   return (
@@ -49,6 +55,7 @@ export default async function GoalsPage({
       <section className="mt-5 grid gap-3">
         {goals?.map((goal) => {
           const goalContributions = (contributions ?? []).filter((item) => item.goal_id === goal.id);
+          const goalNotes = (notes ?? []).filter((item) => item.target_id === goal.id);
           const saved = goalContributions.reduce((sum, item) => sum + Number(item.amount), 0);
           const target = Number(goal.target_amount);
           const percent = target ? (saved / target) * 100 : 0;
@@ -79,7 +86,24 @@ export default async function GoalsPage({
                 <input type="hidden" name="contributed_on" value={new Date().toISOString().slice(0, 10)} />
                 <input className="ios-input" name="amount" type="number" min="1" step="0.01" inputMode="decimal" placeholder="Add amount" required />
                 <button className="ios-button min-h-12 px-4" type="submit">Add</button>
+                <input className="ios-input col-span-2" name="note" placeholder="Optional contribution note" />
               </form>
+
+              <form action={createFinancialNote} className="mt-3 grid gap-2">
+                <input type="hidden" name="target_type" value="goal" />
+                <input type="hidden" name="target_id" value={goal.id} />
+                <input type="hidden" name="next" value="/goals" />
+                <input className="ios-input min-h-11 text-sm" name="body" placeholder="Add goal note, like Trip planned for October" />
+                <button className="ios-secondary-button min-h-10 text-sm" type="submit">Save note</button>
+              </form>
+
+              {goalNotes.length > 0 ? (
+                <div className="mt-4 grid gap-2">
+                  {goalNotes.slice(0, 2).map((note) => (
+                    <p key={note.id} className="rounded-2xl bg-app-bg p-3 text-sm text-app-muted">“{note.body}”</p>
+                  ))}
+                </div>
+              ) : null}
 
               {goalContributions.length > 0 ? (
                 <div className="mt-4 grid gap-2">

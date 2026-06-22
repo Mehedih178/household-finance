@@ -224,7 +224,7 @@ export async function createAccount(formData: FormData) {
   await supabase.from("accounts").insert({
     household_id: householdId,
     name: value(formData, "name"),
-    type: value(formData, "type") as "checking",
+    type: value(formData, "type") as "checking" | "savings" | "credit" | "cash" | "investment" | "crypto" | "loan",
     balance: Number(value(formData, "balance") || 0),
     is_shared: formData.get("is_shared") === "on",
     owner_id: user.id,
@@ -323,6 +323,60 @@ export async function addGoalContribution(formData: FormData) {
   if (error) redirect(`/goals?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/goals");
   revalidatePath("/dashboard");
+}
+
+export async function createFinancialNote(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const targetType = value(formData, "target_type") as "transaction" | "account" | "goal" | "household";
+  const targetId = value(formData, "target_id") || null;
+  const body = value(formData, "body");
+  const next = value(formData, "next") || "/feed";
+  const isShared = formData.has("is_shared") ? formData.get("is_shared") === "on" : true;
+
+  if (!body) redirect(safeNextPath(next));
+
+  const { error } = await supabase.from("financial_notes").insert({
+    household_id: householdId,
+    target_type: targetType,
+    target_id: targetId,
+    body,
+    is_shared: isShared,
+    owner_id: user.id,
+    created_by: user.id
+  });
+
+  if (error) redirect(`${safeNextPath(next)}?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/feed");
+  revalidatePath("/meeting");
+  revalidatePath("/accounts");
+  revalidatePath("/goals");
+  revalidatePath("/transactions");
+  redirect(safeNextPath(next));
+}
+
+export async function saveNetWorthSnapshot(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const assets = Number(value(formData, "assets") || 0);
+  const liabilities = Number(value(formData, "liabilities") || 0);
+  const snapshotOn = value(formData, "snapshot_on") || new Date().toISOString().slice(0, 10);
+
+  const { error } = await supabase.from("net_worth_snapshots").upsert(
+    {
+      household_id: householdId,
+      snapshot_on: snapshotOn,
+      assets,
+      liabilities,
+      created_by: user.id
+    },
+    { onConflict: "household_id,snapshot_on" }
+  );
+
+  if (error) redirect(`/wealth?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/wealth");
+  revalidatePath("/dashboard");
+  redirect("/wealth");
 }
 
 export async function deleteRecurringItem(formData: FormData) {

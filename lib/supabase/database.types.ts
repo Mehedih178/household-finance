@@ -1,5 +1,10 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+export type AccountType = "checking" | "savings" | "credit" | "cash" | "investment" | "crypto" | "loan";
+export type MoneyKind = "income" | "expense";
+export type RecurringFrequency = "weekly" | "biweekly" | "monthly" | "yearly";
+export type TargetType = "transaction" | "account" | "goal" | "household";
+
 export type Database = {
   public: {
     Tables: {
@@ -73,7 +78,7 @@ export type Database = {
           name: string;
           color: string;
           icon: string;
-          kind: "income" | "expense";
+          kind: MoneyKind;
           created_by: string;
           created_at: string;
         };
@@ -83,7 +88,7 @@ export type Database = {
           name: string;
           color?: string;
           icon?: string;
-          kind: "income" | "expense";
+          kind: MoneyKind;
           created_by: string;
           created_at?: string;
         };
@@ -91,7 +96,7 @@ export type Database = {
           name?: string;
           color?: string;
           icon?: string;
-          kind?: "income" | "expense";
+          kind?: MoneyKind;
         };
       };
       accounts: {
@@ -99,7 +104,7 @@ export type Database = {
           id: string;
           household_id: string;
           name: string;
-          type: "checking" | "savings" | "credit" | "cash" | "investment" | "loan";
+          type: AccountType;
           balance: number;
           is_shared: boolean;
           owner_id: string;
@@ -112,7 +117,7 @@ export type Database = {
           id?: string;
           household_id: string;
           name: string;
-          type: "checking" | "savings" | "credit" | "cash" | "investment" | "loan";
+          type: AccountType;
           balance?: number;
           is_shared?: boolean;
           owner_id: string;
@@ -123,7 +128,7 @@ export type Database = {
         };
         Update: {
           name?: string;
-          type?: "checking" | "savings" | "credit" | "cash" | "investment" | "loan";
+          type?: AccountType;
           balance?: number;
           is_shared?: boolean;
           updated_by?: string | null;
@@ -137,7 +142,7 @@ export type Database = {
           account_id: string | null;
           category_id: string | null;
           amount: number;
-          kind: "income" | "expense";
+          kind: MoneyKind;
           description: string;
           occurred_on: string;
           is_shared: boolean;
@@ -153,7 +158,7 @@ export type Database = {
           account_id?: string | null;
           category_id?: string | null;
           amount: number;
-          kind: "income" | "expense";
+          kind: MoneyKind;
           description: string;
           occurred_on: string;
           is_shared?: boolean;
@@ -167,7 +172,7 @@ export type Database = {
           account_id?: string | null;
           category_id?: string | null;
           amount?: number;
-          kind?: "income" | "expense";
+          kind?: MoneyKind;
           description?: string;
           occurred_on?: string;
           is_shared?: boolean;
@@ -218,9 +223,9 @@ export type Database = {
           account_id: string | null;
           category_id: string | null;
           amount: number;
-          kind: "income" | "expense";
+          kind: MoneyKind;
           description: string;
-          frequency: "weekly" | "biweekly" | "monthly" | "yearly";
+          frequency: RecurringFrequency;
           next_due_on: string;
           is_shared: boolean;
           owner_id: string;
@@ -235,9 +240,9 @@ export type Database = {
           account_id?: string | null;
           category_id?: string | null;
           amount: number;
-          kind: "income" | "expense";
+          kind: MoneyKind;
           description: string;
-          frequency: "weekly" | "biweekly" | "monthly" | "yearly";
+          frequency: RecurringFrequency;
           next_due_on: string;
           is_shared?: boolean;
           owner_id: string;
@@ -250,9 +255,9 @@ export type Database = {
           account_id?: string | null;
           category_id?: string | null;
           amount?: number;
-          kind?: "income" | "expense";
+          kind?: MoneyKind;
           description?: string;
-          frequency?: "weekly" | "biweekly" | "monthly" | "yearly";
+          frequency?: RecurringFrequency;
           next_due_on?: string;
           is_shared?: boolean;
           updated_by?: string | null;
@@ -290,10 +295,139 @@ export type Database = {
           accepted_at?: string | null;
         };
       };
+      goals: {
+        Row: {
+          id: string;
+          household_id: string;
+          name: string;
+          target_amount: number;
+          target_date: string | null;
+          color: string;
+          icon: string;
+          is_shared: boolean;
+          owner_id: string;
+          created_by: string;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          name: string;
+          target_amount: number;
+          target_date?: string | null;
+          color?: string;
+          icon?: string;
+          is_shared?: boolean;
+          owner_id: string;
+          created_by: string;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          target_amount?: number;
+          target_date?: string | null;
+          color?: string;
+          icon?: string;
+          is_shared?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+      };
+      goal_contributions: {
+        Row: {
+          id: string;
+          goal_id: string;
+          household_id: string;
+          amount: number;
+          note: string | null;
+          contributed_on: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          goal_id: string;
+          household_id: string;
+          amount: number;
+          note?: string | null;
+          contributed_on?: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          amount?: number;
+          note?: string | null;
+          contributed_on?: string;
+        };
+      };
+      financial_notes: {
+        Row: {
+          id: string;
+          household_id: string;
+          target_type: TargetType;
+          target_id: string | null;
+          body: string;
+          is_shared: boolean;
+          owner_id: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          target_type: TargetType;
+          target_id?: string | null;
+          body: string;
+          is_shared?: boolean;
+          owner_id: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          body?: string;
+          is_shared?: boolean;
+        };
+      };
+      net_worth_snapshots: {
+        Row: {
+          id: string;
+          household_id: string;
+          snapshot_on: string;
+          assets: number;
+          liabilities: number;
+          net_worth: number;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          snapshot_on?: string;
+          assets?: number;
+          liabilities?: number;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          snapshot_on?: string;
+          assets?: number;
+          liabilities?: number;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Enums: {
+      account_type: AccountType;
+      money_kind: MoneyKind;
+      recurring_frequency: RecurringFrequency;
+      invitation_status: "pending" | "accepted" | "revoked";
+      member_role: "owner" | "member";
+    };
     CompositeTypes: Record<string, never>;
   };
 };

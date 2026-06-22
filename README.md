@@ -11,6 +11,11 @@ Mobile-first personal finance PWA for shared household budgeting. It uses Next.j
 - Transaction create, view, edit, delete, filtering, and audit metadata
 - CSV transaction import for free bank-export workflows
 - Categories, monthly budgets, accounts, and basic spending reports
+- Household feed with transactions, goal contributions, achievements, and notes
+- Financial notes attached to transactions, accounts, goals, or the household
+- Monthly finance meeting screen for reviewing income, expenses, savings, goals, and big purchases together
+- Wealth dashboard with assets, liabilities, net worth snapshots, milestones, and a simple FIRE calculator
+- Alerts screen for budget warnings, goal milestones, recurring bills due, and weekly summaries
 - iPhone-focused PWA metadata, safe-area layout, bottom tab navigation, and light/dark mode
 
 ## Setup
@@ -74,9 +79,21 @@ The schema includes:
 - `budgets`
 - `recurring_items`
 - `invitations`
+- `goals`
+- `goal_contributions`
+- `financial_notes`
+- `net_worth_snapshots`
 
 RLS policies limit household data to members. Personal records are visible only to the owner, while shared records are visible to all household members.
 
+## Existing Project Migrations
+
+If your Supabase project already existed before the feed and wealth features, run this additional SQL file in the Supabase SQL editor:
+
+```bash
+supabase/2026-06-22-feed-wealth-notes.sql
+```
+
 ## Current MVP Scope
 
-Recurring items are modeled in the database and secured by RLS, but the first UI pass focuses on auth, onboarding, dashboard, transactions, categories, budgets, accounts, reports, and PWA install support.
+Recurring items are tracked and can generate due-soon alerts, but they do not automatically create transactions yet. The alerts screen is an in-app notification center; push notifications can be added later.

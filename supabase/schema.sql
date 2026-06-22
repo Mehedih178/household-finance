@@ -2,7 +2,7 @@ create extension if not exists pgcrypto;
 
 create type member_role as enum ('owner', 'member');
 create type money_kind as enum ('income', 'expense');
-create type account_type as enum ('checking', 'savings', 'credit', 'cash', 'investment', 'loan');
+create type account_type as enum ('checking', 'savings', 'credit', 'cash', 'investment', 'crypto', 'loan');
 create type invitation_status as enum ('pending', 'accepted', 'revoked');
 create type recurring_frequency as enum ('weekly', 'biweekly', 'monthly', 'yearly');
 
@@ -148,12 +148,39 @@ create table public.goal_contributions (
   created_at timestamptz not null default now()
 );
 
+create table public.financial_notes (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  target_type text not null check (target_type in ('transaction', 'account', 'goal', 'household')),
+  target_id uuid,
+  body text not null,
+  is_shared boolean not null default true,
+  owner_id uuid not null references public.profiles(id),
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create table public.net_worth_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  snapshot_on date not null default current_date,
+  assets numeric(12, 2) not null default 0,
+  liabilities numeric(12, 2) not null default 0,
+  net_worth numeric(12, 2) generated always as (assets - liabilities) stored,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now(),
+  unique (household_id, snapshot_on)
+);
+
 create index accounts_household_idx on public.accounts(household_id);
 create index transactions_household_date_idx on public.transactions(household_id, occurred_on desc);
 create index budgets_household_month_idx on public.budgets(household_id, month);
 create index invitations_token_idx on public.invitations(token);
 create index goals_household_idx on public.goals(household_id);
 create index goal_contributions_goal_idx on public.goal_contributions(goal_id);
+create index financial_notes_household_idx on public.financial_notes(household_id, created_at desc);
+create index financial_notes_target_idx on public.financial_notes(target_type, target_id);
+create index net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -205,6 +232,8 @@ alter table public.recurring_items enable row level security;
 alter table public.invitations enable row level security;
 alter table public.goals enable row level security;
 alter table public.goal_contributions enable row level security;
+alter table public.financial_notes enable row level security;
+alter table public.net_worth_snapshots enable row level security;
 
 create policy "Profiles are visible to household members"
 on public.profiles for select
@@ -359,3 +388,28 @@ using (public.is_household_member(household_id));
 create policy "Members create goal contributions"
 on public.goal_contributions for insert
 with check (public.is_household_member(household_id) and created_by = auth.uid());
+
+create policy "Members view allowed financial notes"
+on public.financial_notes for select
+using (public.is_household_member(household_id) and public.can_view_private(owner_id, is_shared));
+
+create policy "Members create financial notes"
+on public.financial_notes for insert
+with check (public.is_household_member(household_id) and owner_id = auth.uid() and created_by = auth.uid());
+
+create policy "Owners delete own financial notes"
+on public.financial_notes for delete
+using (public.is_household_member(household_id) and owner_id = auth.uid());
+
+create policy "Members view net worth snapshots"
+on public.net_worth_snapshots for select
+using (public.is_household_member(household_id));
+
+create policy "Members create net worth snapshots"
+on public.net_worth_snapshots for insert
+with check (public.is_household_member(household_id) and created_by = auth.uid());
+
+create policy "Members update net worth snapshots"
+on public.net_worth_snapshots for update
+using (public.is_household_member(household_id))
+with check (public.is_household_member(household_id));
