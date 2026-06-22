@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { requireHousehold } from "@/lib/data";
+import { APP_VERSION, getBuildLabel } from "@/lib/version";
 
 export default async function SettingsPage() {
   const { supabase, householdId, householdName, memberships } = await requireHousehold();
@@ -96,6 +97,11 @@ export default async function SettingsPage() {
       <form action={signOut} className="mt-5">
         <button className="ios-secondary-button w-full text-app-danger" type="submit">Sign out</button>
       </form>
+
+      <section className="mt-5 text-center text-xs text-app-muted">
+        <p>Household Finance v{APP_VERSION}</p>
+        <p className="mt-1">Build {getBuildLabel()}</p>
+      </section>
     </AppShell>
   );
 }
