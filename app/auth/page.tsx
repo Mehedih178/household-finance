@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { signIn, signUp } from "@/app/actions";
 
 export default function AuthPage({
   searchParams
 }: {
-  searchParams?: { error?: string; next?: string };
+  searchParams?: { error?: string; message?: string; next?: string };
 }) {
   const next = searchParams?.next?.startsWith("/") ? searchParams.next : "/dashboard";
+  const isInviteFlow = next.startsWith("/invite/");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-end bg-app-bg px-5 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]">
@@ -25,8 +27,20 @@ export default function AuthPage({
         </div>
       ) : null}
 
+      {searchParams?.message ? (
+        <div className="mb-4 rounded-2xl border border-app-tint/30 bg-app-tint/10 p-4 text-sm text-app-tint">
+          {searchParams.message}
+        </div>
+      ) : null}
+
       <section className="ios-card overflow-hidden">
-        <details className="group border-b border-app-line" open>
+        {isInviteFlow ? (
+          <div className="border-b border-app-line bg-app-tint/10 p-5 text-sm leading-6 text-app-muted">
+            You are accepting a household invite. If this is a new account, create it with the same email address the invite was sent to.
+          </div>
+        ) : null}
+
+        <details className="group border-b border-app-line" open={!isInviteFlow}>
           <summary className="cursor-pointer list-none p-5 text-lg font-bold text-app-text">
             Sign in
           </summary>
@@ -41,7 +55,7 @@ export default function AuthPage({
           </form>
         </details>
 
-        <details className="group">
+        <details className="group" open={isInviteFlow}>
           <summary className="cursor-pointer list-none p-5 text-lg font-bold text-app-text">
             Create account
           </summary>
@@ -57,6 +71,10 @@ export default function AuthPage({
           </form>
         </details>
       </section>
+
+      <Link href={`/auth/reset?next=${encodeURIComponent(next)}`} className="mt-4 text-center text-sm font-semibold text-app-tint">
+        Start over on this device
+      </Link>
     </main>
   );
 }

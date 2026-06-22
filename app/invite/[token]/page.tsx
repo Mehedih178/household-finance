@@ -41,14 +41,24 @@ export default async function AcceptInvitePage({
         ) : null}
 
         {user ? (
-          <form action={acceptInvitation} className="mt-6">
-            <input type="hidden" name="token" value={params.token} />
-            <button className="ios-button w-full" type="submit">Accept invite</button>
-          </form>
+          <div className="mt-6 grid gap-3">
+            <form action={acceptInvitation}>
+              <input type="hidden" name="token" value={params.token} />
+              <button className="ios-button w-full" type="submit">Accept invite</button>
+            </form>
+            <Link href={`/auth/reset?next=${encodeURIComponent(`/invite/${params.token}`)}`} className="ios-secondary-button w-full">
+              Use a different account
+            </Link>
+          </div>
         ) : (
-          <Link href={`/auth?next=${encodeURIComponent(`/invite/${params.token}`)}`} className="ios-button mt-6 w-full">
-            Sign in to accept
-          </Link>
+          <div className="mt-6 grid gap-3">
+            <Link href={`/auth?next=${encodeURIComponent(`/invite/${params.token}`)}`} className="ios-button w-full">
+              Create account or sign in
+            </Link>
+            <Link href={`/auth/reset?next=${encodeURIComponent(`/invite/${params.token}`)}`} className="text-center text-sm font-semibold text-app-tint">
+              Start over on this device
+            </Link>
+          </div>
         )}
       </section>
     </main>
