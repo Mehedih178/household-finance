@@ -21,23 +21,11 @@ function validPublicKeyShape(value: string) {
   }
 }
 
-type PushStatus = {
-  privateKeyConfigured: boolean;
-  privateKeyValid: boolean;
-  publicKeyConfigured: boolean;
-  publicKeyValid: boolean;
-  subjectConfigured: boolean;
-};
-
 export function PushNotificationControls({ publicKey }: { publicKey: string }) {
   const [message, setMessage] = useState("");
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [permission, setPermission] = useState("default");
-  const [standalone, setStandalone] = useState(false);
-  const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
-  const [serverStatus, setServerStatus] = useState<PushStatus | null>(null);
 
   const canEnable = useMemo(() => supported && publicKey.length > 0, [publicKey, supported]);
   const publicKeyLooksValid = publicKey.length > 0 && validPublicKeyShape(publicKey);
@@ -45,27 +33,17 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
   useEffect(() => {
     const available = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
     setSupported(available);
-    setStandalone(window.matchMedia("(display-mode: standalone)").matches || ("standalone" in navigator && Boolean(navigator.standalone)));
-    if ("Notification" in window) setPermission(Notification.permission);
     if (!available) return;
 
     navigator.serviceWorker
       .register("/sw.js")
       .catch(() => undefined)
       .then(() => navigator.serviceWorker.ready)
-      .then((registration) => {
-        setServiceWorkerReady(true);
-        return registration.pushManager.getSubscription();
-      })
+      .then((registration) => registration.pushManager.getSubscription())
       .then((subscription) => setSubscribed(Boolean(subscription)))
       .catch((error) => {
         setMessage(error instanceof Error ? error.message : "Could not prepare push notifications.");
       });
-
-    fetch("/api/push/status")
-      .then((response) => response.ok ? response.json() : null)
-      .then((status) => setServerStatus(status))
-      .catch(() => undefined);
   }, []);
 
   async function enablePush() {
@@ -86,10 +64,8 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
       const registration = await navigator.serviceWorker
         .register("/sw.js")
         .then(() => navigator.serviceWorker.ready);
-      setServiceWorkerReady(true);
 
       const permission = await Notification.requestPermission();
-      setPermission(permission);
       if (permission !== "granted") {
         setMessage("Notifications were not allowed on this device.");
         return;
@@ -139,7 +115,6 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
 
       if ("Notification" in window && Notification.permission !== "granted") {
         const permission = await Notification.requestPermission();
-        setPermission(permission);
         if (permission !== "granted") {
           setMessage("Notifications were not allowed on this device.");
           return;
@@ -227,15 +202,6 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
           This browser does not support web push. Use the installed iPhone Home Screen app or a compatible browser.
         </p>
       ) : null}
-      <div className="grid gap-2 rounded-2xl bg-app-bg p-3 text-sm text-app-muted">
-        <p>Support: {supported ? "available" : "not available"}</p>
-        <p>Service worker: {serviceWorkerReady ? "ready" : "not ready yet"}</p>
-        <p>Installed app mode: {standalone ? "yes" : "no — on iPhone, use Add to Home Screen first"}</p>
-        <p>Permission: {permission}</p>
-        <p>VAPID public key: {publicKey ? publicKeyLooksValid ? "configured and valid-looking" : "configured but invalid-looking" : "missing in Vercel env"}</p>
-        <p>VAPID private key: {serverStatus ? serverStatus.privateKeyConfigured ? serverStatus.privateKeyValid ? "configured and valid-looking" : "configured but invalid-looking" : "missing in Vercel env" : "checking..."}</p>
-        <p>VAPID subject: {serverStatus ? serverStatus.subjectConfigured ? "configured" : "missing" : "checking..."}</p>
-      </div>
       {message ? <p className="rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{message}</p> : null}
     </section>
   );
