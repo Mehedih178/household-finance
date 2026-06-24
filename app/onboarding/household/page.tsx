@@ -1,4 +1,5 @@
 import { createHousehold } from "@/app/actions";
+import { PendingInvites } from "@/components/pending-invites";
 
 export default function CreateHouseholdPage({
   searchParams
@@ -26,7 +27,7 @@ export default function CreateHouseholdPage({
         <div className="mt-4 grid gap-3">
           {[
             "Create your household",
-            "Invite your wife",
+            "Invite people",
             "Add accounts, budgets, and transactions"
           ].map((item, index) => (
             <div key={item} className="flex items-center gap-3">
@@ -36,6 +37,8 @@ export default function CreateHouseholdPage({
           ))}
         </div>
       </section>
+
+      <PendingInvites className="mt-5" />
 
       <form action={createHousehold} className="ios-card mt-5 grid gap-4 p-4">
         <div>

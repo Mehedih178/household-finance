@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { createCategory, signOut, switchHousehold } from "@/app/actions";
+import { createCategory, signOut, updateHouseholdName } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
+import { HouseholdSiteSwitcher } from "@/components/household-site-switcher";
+import { PendingInvites } from "@/components/pending-invites";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { requireHousehold } from "@/lib/data";
 import { APP_VERSION, getBuildLabel } from "@/lib/version";
@@ -10,7 +12,7 @@ const sections = [
   {
     title: "Household",
     links: [
-      { href: "/onboarding/invite", label: "Invite spouse", detail: "Add your wife to this household" },
+      { href: "/onboarding/invite", label: "Invite people", detail: "Add anyone to this household" },
       { href: "/feed", label: "Household feed", detail: "Shared money activity" },
       { href: "/meeting", label: "Monthly meeting", detail: "Review the month together" },
       { href: "/goals", label: "Shared goals", detail: "Vacation, savings, and milestones" }
@@ -33,7 +35,11 @@ const sections = [
   }
 ];
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams
+}: {
+  searchParams?: { error?: string; renamed?: string };
+}) {
   const { supabase, householdId, householdName, memberships } = await requireHousehold();
   const [{ data: categories }, { data: members }] = await Promise.all([
     supabase.from("categories").select("*").eq("household_id", householdId).order("kind").order("name"),
@@ -42,32 +48,35 @@ export default async function SettingsPage() {
 
   return (
     <AppShell title="More">
+      {searchParams?.error ? (
+        <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
+          {searchParams.error}
+        </div>
+      ) : null}
+
+      {searchParams?.renamed ? (
+        <div className="mb-4 rounded-2xl border border-app-success/30 bg-app-success/10 p-4 text-sm font-semibold text-app-success">
+          Household name updated.
+        </div>
+      ) : null}
+
+      <PendingInvites />
+
       <section className="ios-card p-4">
         <p className="text-sm text-app-muted">Household</p>
         <p className="mt-1 text-xl font-bold text-app-text">{householdName}</p>
-        {memberships.length > 1 ? (
-          <form action={switchHousehold} className="mt-4 grid gap-2">
-            <label className="text-sm font-semibold text-app-muted" htmlFor="household_id">
-              Active household
-            </label>
-            <select className="ios-input" id="household_id" name="household_id" defaultValue={householdId}>
-              {memberships.map((membership) => {
-                const household = Array.isArray(membership.households)
-                  ? membership.households[0]
-                  : membership.households;
-                return (
-                  <option key={membership.household_id} value={membership.household_id}>
-                    {household?.name ?? "Household"} ({membership.role})
-                  </option>
-                );
-              })}
-            </select>
-            <button className="ios-secondary-button min-h-11" type="submit">
-              Switch household
-            </button>
-          </form>
-        ) : null}
+        <form action={updateHouseholdName} className="mt-4 grid gap-2">
+          <label className="text-sm font-semibold text-app-muted" htmlFor="household-name">
+            Rename household
+          </label>
+          <input className="ios-input" id="household-name" name="name" defaultValue={householdName} required />
+          <button className="ios-secondary-button min-h-11" type="submit">
+            Save name
+          </button>
+        </form>
       </section>
+
+      <HouseholdSiteSwitcher activeHouseholdId={householdId} memberships={memberships} className="mt-5" />
 
       <section className="mt-5 grid gap-3">
         <ThemeToggle />

@@ -3,6 +3,7 @@ import { Bell, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CashFlowChart } from "@/components/charts";
 import { InstallPromptCard } from "@/components/install-prompt-card";
+import { HouseholdSiteSwitcher } from "@/components/household-site-switcher";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatCard } from "@/components/stat-card";
 import { budgetAlert, daysLeftInMonth } from "@/lib/budgeting";
@@ -87,6 +88,8 @@ export default async function DashboardPage() {
         </div>
       }
     >
+      <HouseholdSiteSwitcher activeHouseholdId={data.householdId} memberships={data.memberships} />
+
       <section className="rounded-[24px] bg-app-tint p-5 text-white shadow-ios">
         <p className="text-lg font-semibold opacity-85">Good afternoon</p>
         <p className="mt-3 text-2xl font-bold tracking-tight">{status}</p>

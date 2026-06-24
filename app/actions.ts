@@ -220,15 +220,37 @@ export async function switchHousehold(formData: FormData) {
   redirect("/dashboard");
 }
 
+export async function updateHouseholdName(formData: FormData) {
+  const { supabase, householdId } = await requireHousehold();
+  const name = value(formData, "name");
+
+  if (!name) redirect("/settings?error=Household name is required");
+
+  const { error } = await supabase
+    .from("households")
+    .update({
+      name,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", householdId);
+
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/", "layout");
+  redirect("/settings?renamed=1");
+}
+
 export async function createInvitation(formData: FormData) {
   const { supabase, user, householdId } = await requireHousehold();
   const email = value(formData, "email");
+  const role = value(formData, "role") === "owner" ? "owner" : "member";
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString();
 
   const { error } = await supabase.from("invitations").insert({
     household_id: householdId,
     email,
+    role,
     token,
     invited_by: user.id,
     expires_at: expiresAt
@@ -305,7 +327,7 @@ export async function acceptInvitation(formData: FormData) {
     {
       household_id: invite.household_id,
       user_id: user.id,
-      role: "member"
+      role: invite.role ?? "member"
     },
     { onConflict: "household_id,user_id" }
   );

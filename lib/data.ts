@@ -42,7 +42,7 @@ export async function requireHousehold() {
 }
 
 export async function getDashboardData(month: string) {
-  const { supabase, householdId, householdName, user } = await requireHousehold();
+  const { supabase, householdId, householdName, memberships, user } = await requireHousehold();
   const monthDates = monthRange(month);
   const previousDates = monthRange(previousMonthKey(month));
   const streakStartDate = new Date(`${monthDates.start}T00:00:00`);
@@ -86,6 +86,7 @@ export async function getDashboardData(month: string) {
     user,
     householdId,
     householdName,
+    memberships,
     transactions: transactions.data ?? [],
     categories: categories.data ?? [],
     accounts: accounts.data ?? [],

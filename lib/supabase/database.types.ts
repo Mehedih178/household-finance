@@ -299,6 +299,7 @@ export type Database = {
           email: string;
           token: string;
           status: "pending" | "accepted" | "revoked";
+          role: "owner" | "member";
           invited_by: string;
           accepted_by: string | null;
           expires_at: string;
@@ -311,6 +312,7 @@ export type Database = {
           email: string;
           token: string;
           status?: "pending" | "accepted" | "revoked";
+          role?: "owner" | "member";
           invited_by: string;
           accepted_by?: string | null;
           expires_at: string;
@@ -319,6 +321,7 @@ export type Database = {
         };
         Update: {
           status?: "pending" | "accepted" | "revoked";
+          role?: "owner" | "member";
           accepted_by?: string | null;
           accepted_at?: string | null;
         };

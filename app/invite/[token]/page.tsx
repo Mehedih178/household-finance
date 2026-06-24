@@ -16,7 +16,7 @@ export default async function AcceptInvitePage({
 
   const { data: invite } = await supabase
     .from("invitations")
-    .select("email, status, expires_at, households(name)")
+    .select("email, role, status, expires_at, households(name)")
     .eq("token", params.token)
     .maybeSingle();
   const household = Array.isArray(invite?.households)
@@ -36,6 +36,7 @@ export default async function AcceptInvitePage({
 
         <div className="mt-5 grid gap-2 rounded-2xl bg-app-bg p-4 text-sm text-app-muted">
           <p><span className="font-semibold text-app-text">Invited email:</span> {invite?.email ?? "Hidden until sign in"}</p>
+          <p><span className="font-semibold text-app-text">Role:</span> {invite?.role ?? "member"}</p>
           <p><span className="font-semibold text-app-text">Status:</span> {invite?.status ?? "Open invite"}</p>
           {invite?.expires_at ? <p><span className="font-semibold text-app-text">Expires:</span> {new Date(invite.expires_at).toLocaleDateString()}</p> : null}
         </div>
@@ -65,6 +66,7 @@ export default async function AcceptInvitePage({
           <div className="mt-6 grid gap-3">
             <div className="rounded-2xl bg-app-bg p-4 text-sm leading-6 text-app-muted">
               New here? Tap below, create your account, verify your email, then this invite will be waiting for you.
+              You can also accept it later from More or onboarding after signing in.
             </div>
             <Link href={`/auth?next=${encodeURIComponent(`/invite/${params.token}`)}`} className="ios-button w-full">
               Create account or sign in

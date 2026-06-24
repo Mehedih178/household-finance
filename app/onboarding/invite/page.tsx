@@ -23,9 +23,9 @@ export default async function InvitePage({
       <BackButton href="/settings" />
       <div className="pt-12">
         <p className="text-sm font-semibold uppercase tracking-[.18em] text-app-tint">Household setup</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-app-text">Add your wife</h1>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight text-app-text">Invite people</h1>
         <p className="mt-3 text-lg leading-7 text-app-muted">
-          Create one secure link. She opens it, signs up or signs in, then taps Accept. No manual setup.
+          Create one secure link. They open it, sign up or sign in, then tap Accept. No manual setup.
         </p>
       </div>
 
@@ -51,10 +51,10 @@ export default async function InvitePage({
         <h2 className="text-lg font-bold text-app-text">How it works</h2>
         <div className="mt-4 grid gap-3">
           {[
-            ["1", "Enter her email"],
+            ["1", "Enter their email"],
             ["2", "Share the link by text"],
-            ["3", "She creates or signs into that same email"],
-            ["4", "She taps Accept and joins your household"]
+            ["3", "They create or sign into that same email"],
+            ["4", "They tap Accept and join your household"]
           ].map(([step, label]) => (
             <div key={step} className="flex items-center gap-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-app-tint/10 text-sm font-bold text-app-tint">{step}</span>
@@ -67,9 +67,16 @@ export default async function InvitePage({
       <form action={createInvitation} className="ios-card mt-5 grid gap-4 p-4">
         <div>
           <h2 className="text-lg font-bold text-app-text">Create invite</h2>
-          <p className="mt-1 text-sm text-app-muted">Use the exact email she will sign in with.</p>
+          <p className="mt-1 text-sm text-app-muted">Use the exact email they will sign in with.</p>
         </div>
-        <input className="ios-input" name="email" type="email" placeholder="wife@example.com" required />
+        <input className="ios-input" name="email" type="email" placeholder="person@example.com" required />
+        <label className="grid gap-2">
+          <span className="text-sm font-semibold text-app-muted">Role</span>
+          <select className="ios-input" name="role" defaultValue="member">
+            <option value="member">Member — can add and manage shared finance data</option>
+            <option value="owner">Owner — can also rename and manage the household</option>
+          </select>
+        </label>
         <button className="ios-button" type="submit">Create share link</button>
       </form>
 
@@ -100,7 +107,7 @@ export default async function InvitePage({
                     <span className="text-sm text-app-muted">
                       {invite.status === "accepted" && invite.accepted_at
                         ? `Accepted ${new Date(invite.accepted_at).toLocaleDateString()}`
-                        : `Expires ${new Date(invite.expires_at).toLocaleDateString()}`}
+                        : `Join as ${invite.role ?? "member"} · expires ${new Date(invite.expires_at).toLocaleDateString()}`}
                     </span>
                   </div>
                 </div>
@@ -120,12 +127,12 @@ export default async function InvitePage({
               ) : null}
               {invite.status === "pending" && !isExpired ? (
                 <p className="mt-3 rounded-2xl bg-app-tint/10 p-3 text-sm text-app-tint">
-                  Send this link to her. She must use {invite.email}.
+                  Send this link to them. They must use {invite.email}.
                 </p>
               ) : null}
               {invite.status === "accepted" ? (
                 <p className="mt-3 rounded-2xl bg-app-success/10 p-3 text-sm text-app-success">
-                  This invite has already been accepted. She should now see this household after signing in.
+                  This invite has already been accepted. They should now see this household after signing in.
                 </p>
               ) : null}
               {invite.status === "pending" ? (

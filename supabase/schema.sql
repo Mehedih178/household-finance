@@ -126,6 +126,7 @@ create table public.invitations (
   email text not null,
   token text not null unique,
   status invitation_status not null default 'pending',
+  role member_role not null default 'member',
   invited_by uuid not null references public.profiles(id),
   accepted_by uuid references public.profiles(id),
   expires_at timestamptz not null,
