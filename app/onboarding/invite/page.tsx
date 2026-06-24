@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createInvitation } from "@/app/actions";
+import { createInvitation, deleteInvitation } from "@/app/actions";
 import { BackButton } from "@/components/back-button";
 import { CopyButton } from "@/components/copy-button";
 import { ShareInviteButton } from "@/components/share-invite-button";
@@ -8,7 +8,7 @@ import { requireHousehold } from "@/lib/data";
 export default async function InvitePage({
   searchParams
 }: {
-  searchParams?: { created?: string; error?: string };
+  searchParams?: { created?: string; deleted?: string; error?: string };
 }) {
   const { supabase, householdId } = await requireHousehold();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -41,6 +41,12 @@ export default async function InvitePage({
         </div>
       ) : null}
 
+      {searchParams?.deleted ? (
+        <div className="mt-6 rounded-2xl border border-app-success/30 bg-app-success/10 p-4 text-sm font-semibold text-app-success">
+          Invite link deleted.
+        </div>
+      ) : null}
+
       <section className="ios-card mt-8 p-4">
         <h2 className="text-lg font-bold text-app-text">How it works</h2>
         <div className="mt-4 grid gap-3">
@@ -70,28 +76,65 @@ export default async function InvitePage({
       <div className="mt-6 grid gap-3">
         {invites?.map((invite) => {
           const inviteUrl = `${siteUrl}/invite/${invite.token}`;
+          const isExpired = new Date(invite.expires_at).getTime() < Date.now();
+          const statusLabel = invite.status === "accepted"
+            ? "Accepted"
+            : isExpired
+              ? "Expired"
+              : invite.status === "revoked"
+                ? "Deleted"
+                : "Waiting";
+          const statusClass = invite.status === "accepted"
+            ? "bg-app-success/15 text-app-success"
+            : isExpired || invite.status === "revoked"
+              ? "bg-app-danger/10 text-app-danger"
+              : "bg-app-tint/10 text-app-tint";
 
           return (
             <div key={invite.id} className="ios-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-app-text">{invite.email}</p>
-                  <p className="mt-1 text-sm capitalize text-app-muted">
-                    {invite.status} · expires {new Date(invite.expires_at).toLocaleDateString()}
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>{statusLabel}</span>
+                    <span className="text-sm text-app-muted">
+                      {invite.status === "accepted" && invite.accepted_at
+                        ? `Accepted ${new Date(invite.accepted_at).toLocaleDateString()}`
+                        : `Expires ${new Date(invite.expires_at).toLocaleDateString()}`}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <ShareInviteButton url={inviteUrl} email={invite.email} />
-                  <CopyButton value={inviteUrl} />
+                  {invite.status === "pending" && !isExpired ? (
+                    <>
+                      <ShareInviteButton url={inviteUrl} email={invite.email} />
+                      <CopyButton value={inviteUrl} />
+                    </>
+                  ) : null}
                 </div>
               </div>
-              <p className="mt-3 break-all rounded-2xl bg-app-bg p-3 text-sm text-app-muted">
-                {inviteUrl}
-              </p>
-              {invite.status === "pending" ? (
+              {invite.status === "pending" && !isExpired ? (
+                <p className="mt-3 break-all rounded-2xl bg-app-bg p-3 text-sm text-app-muted">
+                  {inviteUrl}
+                </p>
+              ) : null}
+              {invite.status === "pending" && !isExpired ? (
                 <p className="mt-3 rounded-2xl bg-app-tint/10 p-3 text-sm text-app-tint">
                   Send this link to her. She must use {invite.email}.
                 </p>
+              ) : null}
+              {invite.status === "accepted" ? (
+                <p className="mt-3 rounded-2xl bg-app-success/10 p-3 text-sm text-app-success">
+                  This invite has already been accepted. She should now see this household after signing in.
+                </p>
+              ) : null}
+              {invite.status === "pending" ? (
+                <form action={deleteInvitation} className="mt-3">
+                  <input type="hidden" name="invite_id" value={invite.id} />
+                  <button className="ios-secondary-button min-h-10 w-full text-sm text-app-danger" type="submit">
+                    Delete invite link
+                  </button>
+                </form>
               ) : null}
             </div>
           );

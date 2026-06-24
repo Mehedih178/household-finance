@@ -20,6 +20,7 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
   const [busy, setBusy] = useState(false);
   const [permission, setPermission] = useState("default");
   const [standalone, setStandalone] = useState(false);
+  const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
 
   const canEnable = useMemo(() => supported && publicKey.length > 0, [publicKey, supported]);
 
@@ -30,10 +31,18 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
     if ("Notification" in window) setPermission(Notification.permission);
     if (!available) return;
 
-    navigator.serviceWorker.ready
-      .then((registration) => registration.pushManager.getSubscription())
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch(() => undefined)
+      .then(() => navigator.serviceWorker.ready)
+      .then((registration) => {
+        setServiceWorkerReady(true);
+        return registration.pushManager.getSubscription();
+      })
       .then((subscription) => setSubscribed(Boolean(subscription)))
-      .catch(() => undefined);
+      .catch((error) => {
+        setMessage(error instanceof Error ? error.message : "Could not prepare push notifications.");
+      });
   }, []);
 
   async function enablePush() {
@@ -42,9 +51,14 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
 
     try {
       if (!canEnable) {
-        setMessage(publicKey ? "Push notifications are not supported on this browser." : "Missing VAPID public key.");
+        setMessage(publicKey ? "Push notifications are not supported on this browser." : "Missing VAPID public key in Vercel environment variables.");
         return;
       }
+
+      const registration = await navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => navigator.serviceWorker.ready);
+      setServiceWorkerReady(true);
 
       const permission = await Notification.requestPermission();
       setPermission(permission);
@@ -53,7 +67,6 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
         return;
       }
 
-      const registration = await navigator.serviceWorker.ready;
       const existing = await registration.pushManager.getSubscription();
       const subscription = existing ?? await registration.pushManager.subscribe({
         applicationServerKey: base64ToUint8Array(publicKey),
@@ -86,10 +99,34 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
     setMessage("");
 
     try {
+      if (!supported) {
+        setMessage("This browser does not support web push. On iPhone, open the installed Home Screen app.");
+        return;
+      }
+
+      if (!publicKey) {
+        setMessage("Missing VAPID public key in Vercel environment variables.");
+        return;
+      }
+
+      if ("Notification" in window && Notification.permission !== "granted") {
+        const permission = await Notification.requestPermission();
+        setPermission(permission);
+        if (permission !== "granted") {
+          setMessage("Notifications were not allowed on this device.");
+          return;
+        }
+      }
+
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("Household Finance", {
           body: "Local notification permission works on this device."
         });
+      }
+
+      if (!subscribed) {
+        setMessage("Local notification works. Tap Enable push notifications first to save this device for server push.");
+        return;
       }
 
       const response = await fetch("/api/push/test", { method: "POST" });
@@ -111,10 +148,10 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
           On iPhone, install this app with Add to Home Screen first. Then enable notifications here.
         </p>
       </div>
-      <button className="ios-button disabled:opacity-50" type="button" disabled={!canEnable || busy} onClick={enablePush}>
+      <button className="ios-button disabled:opacity-50" type="button" disabled={busy} onClick={enablePush}>
         {subscribed ? "Re-enable on this device" : "Enable push notifications"}
       </button>
-      <button className="ios-secondary-button disabled:opacity-50" type="button" disabled={!subscribed || busy} onClick={sendTest}>
+      <button className="ios-secondary-button disabled:opacity-50" type="button" disabled={busy} onClick={sendTest}>
         Send test notification
       </button>
       {!supported ? (
@@ -124,6 +161,7 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
       ) : null}
       <div className="grid gap-2 rounded-2xl bg-app-bg p-3 text-sm text-app-muted">
         <p>Support: {supported ? "available" : "not available"}</p>
+        <p>Service worker: {serviceWorkerReady ? "ready" : "not ready yet"}</p>
         <p>Installed app mode: {standalone ? "yes" : "no — on iPhone, use Add to Home Screen first"}</p>
         <p>Permission: {permission}</p>
         <p>VAPID key: {publicKey ? "configured" : "missing in Vercel env"}</p>

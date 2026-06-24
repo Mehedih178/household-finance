@@ -240,6 +240,23 @@ export async function createInvitation(formData: FormData) {
   redirect("/onboarding/invite?created=1");
 }
 
+export async function deleteInvitation(formData: FormData) {
+  const { supabase, householdId } = await requireHousehold();
+  const inviteId = value(formData, "invite_id");
+
+  const { error } = await supabase
+    .from("invitations")
+    .delete()
+    .eq("id", inviteId)
+    .eq("household_id", householdId)
+    .eq("status", "pending");
+
+  if (error) redirect(`/onboarding/invite?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath("/onboarding/invite");
+  redirect("/onboarding/invite?deleted=1");
+}
+
 export async function acceptInvitation(formData: FormData) {
   const { supabase, user } = await ensureProfile();
 

@@ -447,6 +447,10 @@ on public.invitations for update
 using (status = 'pending')
 with check (accepted_by = auth.uid());
 
+create policy "Members delete pending invitations"
+on public.invitations for delete
+using (public.is_household_member(household_id) and status = 'pending');
+
 create policy "Members view allowed goals"
 on public.goals for select
 using (public.is_household_member(household_id) and public.can_view_private(owner_id, is_shared));
