@@ -49,7 +49,7 @@ export async function getDashboardData(month: string) {
   streakStartDate.setMonth(streakStartDate.getMonth() - 5);
   const streakStart = streakStartDate.toISOString().slice(0, 10);
 
-  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, streakBudgets, streakTransactions, members, goals, goalContributions, recurring, snapshots, notificationPreferences] = await Promise.all([
+  const [transactions, categories, accounts, budgets, previousBudgets, previousTransactions, streakBudgets, streakTransactions, members, goals, goalContributions, recurring, snapshots, notificationPreferences, notificationReads] = await Promise.all([
     supabase
       .from("transactions")
       .select("*, categories(name, color), accounts(name), profiles!transactions_created_by_fkey(full_name, email)")
@@ -74,7 +74,12 @@ export async function getDashboardData(month: string) {
       .select("*")
       .eq("household_id", householdId)
       .eq("user_id", user.id)
-      .maybeSingle()
+      .maybeSingle(),
+    supabase
+      .from("notification_reads")
+      .select("notification_id")
+      .eq("household_id", householdId)
+      .eq("user_id", user.id)
   ]);
 
   return {
@@ -94,6 +99,7 @@ export async function getDashboardData(month: string) {
     members: members.data ?? [],
     recurring: recurring.data ?? [],
     snapshots: snapshots.data ?? [],
-    notificationPreferences: notificationPreferences.data
+    notificationPreferences: notificationPreferences.data,
+    notificationReads: notificationReads.data ?? []
   };
 }

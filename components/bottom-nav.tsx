@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, Home, PieChart, Settings } from "lucide-react";
+import { Bell, CreditCard, Home, PieChart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/transactions", label: "Activity", icon: CreditCard },
   { href: "/budgets", label: "Budgets", icon: PieChart },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/notifications", label: "Inbox", icon: Bell },
   { href: "/settings", label: "More", icon: Settings }
 ];
 

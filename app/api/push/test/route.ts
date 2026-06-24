@@ -18,7 +18,15 @@ export async function POST() {
     return NextResponse.json({ error: "No push subscription found for this device." }, { status: 404 });
   }
 
-  const push = configureWebPush();
+  let push;
+  try {
+    push = configureWebPush();
+  } catch (pushError) {
+    return NextResponse.json(
+      { error: pushError instanceof Error ? pushError.message : "Push is not configured." },
+      { status: 400 }
+    );
+  }
   const payload = JSON.stringify({
     title: "Household Finance",
     body: "Push notifications are working on this device.",

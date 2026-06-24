@@ -20,7 +20,17 @@ create table if not exists public.transaction_receipts (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.notification_reads (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  notification_id text not null,
+  read_at timestamptz not null default now(),
+  unique (household_id, user_id, notification_id)
+);
+
 create index if not exists transaction_receipts_transaction_idx on public.transaction_receipts(transaction_id);
+create index if not exists notification_reads_user_idx on public.notification_reads(user_id, household_id);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('receipts', 'receipts', false, 5242880, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
@@ -30,6 +40,7 @@ on conflict (id) do update set
   allowed_mime_types = excluded.allowed_mime_types;
 
 alter table public.transaction_receipts enable row level security;
+alter table public.notification_reads enable row level security;
 
 drop policy if exists "Members view allowed transaction receipts" on public.transaction_receipts;
 drop policy if exists "Members create transaction receipts" on public.transaction_receipts;
@@ -37,6 +48,8 @@ drop policy if exists "Owners delete own transaction receipts" on public.transac
 drop policy if exists "Household members upload receipt files" on storage.objects;
 drop policy if exists "Household members view receipt files" on storage.objects;
 drop policy if exists "Household members delete receipt files" on storage.objects;
+drop policy if exists "Users view own notification reads" on public.notification_reads;
+drop policy if exists "Users create own notification reads" on public.notification_reads;
 
 create policy "Members view allowed transaction receipts"
 on public.transaction_receipts for select
@@ -77,6 +90,14 @@ using (
   bucket_id = 'receipts'
   and public.is_household_member((split_part(name, '/', 1))::uuid)
 );
+
+create policy "Users view own notification reads"
+on public.notification_reads for select
+using (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users create own notification reads"
+on public.notification_reads for insert
+with check (public.is_household_member(household_id) and user_id = auth.uid());
 
 create table if not exists public.financial_notes (
   id uuid primary key default gen_random_uuid(),

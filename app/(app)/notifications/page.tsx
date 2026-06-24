@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { saveNotificationPreferences } from "@/app/actions";
+import { markAllNotificationsRead, markNotificationRead, saveNotificationPreferences } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
 import { PushNotificationControls } from "@/components/push-notification-controls";
@@ -38,7 +38,8 @@ export default async function NotificationsPage({
     { data: recurring },
     { data: accounts },
     { data: snapshots },
-    { data: preferencesRow }
+    { data: preferencesRow },
+    { data: reads }
   ] = await Promise.all([
     supabase.from("budgets").select("*, categories(name)").eq("household_id", householdId).eq("month", currentMonth.start),
     supabase
@@ -63,7 +64,12 @@ export default async function NotificationsPage({
       .select("*")
       .eq("household_id", householdId)
       .eq("user_id", user.id)
-      .maybeSingle()
+      .maybeSingle(),
+    supabase
+      .from("notification_reads")
+      .select("notification_id")
+      .eq("household_id", householdId)
+      .eq("user_id", user.id)
   ]);
 
   const preferences = preferencesRow ?? defaultNotificationPreferences;
@@ -80,9 +86,12 @@ export default async function NotificationsPage({
     snapshots: snapshots ?? [],
     userId: user.id
   });
-  const priorityItems = inbox.items.filter((item) => item.severity === "danger" || item.severity === "warning").slice(0, 4);
-  const insightItems = inbox.items.filter((item) => item.category === "insights").slice(0, 4);
-  const celebrationItems = inbox.items.filter((item) => item.severity === "good" || item.category === "achievements").slice(0, 4);
+  const readIds = new Set((reads ?? []).map((read) => read.notification_id));
+  const unreadItems = inbox.items.filter((item) => !readIds.has(item.id)).slice(0, 30);
+  const readItems = inbox.items.filter((item) => readIds.has(item.id)).slice(0, 12);
+  const priorityItems = unreadItems.filter((item) => item.severity === "danger" || item.severity === "warning").slice(0, 4);
+  const insightItems = unreadItems.filter((item) => item.category === "insights").slice(0, 4);
+  const celebrationItems = unreadItems.filter((item) => item.severity === "good" || item.category === "achievements").slice(0, 4);
 
   return (
     <AppShell title="Inbox" backHref="/settings">
@@ -102,7 +111,7 @@ export default async function NotificationsPage({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold opacity-80">Finance Inbox</p>
-            <p className="mt-2 text-3xl font-bold tracking-tight">Notifications ({inbox.unreadCount})</p>
+            <p className="mt-2 text-3xl font-bold tracking-tight">Inbox ({unreadItems.length})</p>
           </div>
           <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-bold capitalize">{preferences.frequency}</span>
         </div>
@@ -135,9 +144,28 @@ export default async function NotificationsPage({
       <InboxSection title="Wins" items={celebrationItems} empty="Achievements and streaks will appear here." />
 
       <section className="mt-5">
-        <h2 className="mb-3 text-lg font-bold text-app-text">All notifications</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-app-text">Unread</h2>
+          {unreadItems.length > 0 ? (
+            <form action={markAllNotificationsRead}>
+              {unreadItems.map((item) => <input key={item.id} type="hidden" name="notification_id" value={item.id} />)}
+              <button className="text-sm font-semibold text-app-tint" type="submit">Mark all read</button>
+            </form>
+          ) : null}
+        </div>
         <div className="grid gap-3">
-          {inbox.items.map((item) => <InboxCard key={item.id} item={item} />)}
+          {unreadItems.length > 0 ? unreadItems.map((item) => <InboxCard key={item.id} item={item} read={false} />) : (
+            <div className="ios-card p-4 text-sm text-app-muted">No unread notifications.</div>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-5">
+        <h2 className="mb-3 text-lg font-bold text-app-text">Recently read</h2>
+        <div className="grid gap-3">
+          {readItems.length > 0 ? readItems.map((item) => <InboxCard key={item.id} item={item} read />) : (
+            <div className="ios-card p-4 text-sm text-app-muted">Read notifications will appear here.</div>
+          )}
         </div>
       </section>
 
@@ -183,7 +211,7 @@ function InboxSection({
     <section className="mt-5">
       <h2 className="mb-3 text-lg font-bold text-app-text">{title}</h2>
       <div className="grid gap-3">
-        {items.length > 0 ? items.map((item) => <InboxCard key={item.id} item={item} />) : (
+        {items.length > 0 ? items.map((item) => <InboxCard key={item.id} item={item} read={false} />) : (
           <div className="ios-card p-4 text-sm text-app-muted">{empty}</div>
         )}
       </div>
@@ -191,9 +219,9 @@ function InboxSection({
   );
 }
 
-function InboxCard({ item }: { item: FinanceInboxItem }) {
+function InboxCard({ item, read }: { item: FinanceInboxItem; read: boolean }) {
   return (
-    <Link href={item.href} className={`block rounded-ios border p-4 shadow-ios-sm ${toneClasses(item.severity)}`}>
+    <div className={`rounded-ios border p-4 shadow-ios-sm ${read ? "border-app-line/60 bg-app-card/60 opacity-75" : toneClasses(item.severity)}`}>
       <div className="flex gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-bg text-xl">{item.emoji}</div>
         <div className="min-w-0 flex-1">
@@ -202,9 +230,19 @@ function InboxCard({ item }: { item: FinanceInboxItem }) {
             <span className="rounded-full bg-app-bg px-2 py-1 text-[11px] font-bold capitalize text-app-muted">{item.category}</span>
           </div>
           <p className="mt-1 text-sm leading-5 text-app-muted">{item.detail}</p>
+          <div className="mt-3 flex items-center gap-3">
+            <Link href={item.href} className="text-sm font-semibold text-app-tint">Open</Link>
+            {!read ? (
+              <form action={markNotificationRead}>
+                <input type="hidden" name="notification_id" value={item.id} />
+                <input type="hidden" name="next" value="/notifications" />
+                <button className="text-sm font-semibold text-app-muted" type="submit">Mark read</button>
+              </form>
+            ) : null}
+          </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 

@@ -18,12 +18,16 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [permission, setPermission] = useState("default");
+  const [standalone, setStandalone] = useState(false);
 
   const canEnable = useMemo(() => supported && publicKey.length > 0, [publicKey, supported]);
 
   useEffect(() => {
     const available = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
     setSupported(available);
+    setStandalone(window.matchMedia("(display-mode: standalone)").matches || ("standalone" in navigator && Boolean(navigator.standalone)));
+    if ("Notification" in window) setPermission(Notification.permission);
     if (!available) return;
 
     navigator.serviceWorker.ready
@@ -43,6 +47,7 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
       }
 
       const permission = await Notification.requestPermission();
+      setPermission(permission);
       if (permission !== "granted") {
         setMessage("Notifications were not allowed on this device.");
         return;
@@ -111,6 +116,12 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
           This browser does not support web push. Use the installed iPhone Home Screen app or a compatible browser.
         </p>
       ) : null}
+      <div className="grid gap-2 rounded-2xl bg-app-bg p-3 text-sm text-app-muted">
+        <p>Support: {supported ? "available" : "not available"}</p>
+        <p>Installed app mode: {standalone ? "yes" : "no — on iPhone, use Add to Home Screen first"}</p>
+        <p>Permission: {permission}</p>
+        <p>VAPID key: {publicKey ? "configured" : "missing in Vercel env"}</p>
+      </div>
       {message ? <p className="rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{message}</p> : null}
     </section>
   );

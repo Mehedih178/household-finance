@@ -40,6 +40,8 @@ export default async function DashboardPage() {
     snapshots: data.snapshots,
     userId: data.user.id
   });
+  const readIds = new Set(data.notificationReads.map((item) => item.notification_id));
+  const unreadInboxCount = inbox.items.filter((item) => !readIds.has(item.id)).length;
 
   const chartData = Array.from({ length: 4 }).map((_, index) => {
     const week = index + 1;
@@ -61,9 +63,9 @@ export default async function DashboardPage() {
         <div className="flex gap-2">
           <Link href="/notifications" className="ios-secondary-button relative h-11 min-h-11 rounded-full px-4" aria-label="Finance inbox">
             <Bell size={19} />
-            {inbox.unreadCount > 0 ? (
+            {unreadInboxCount > 0 ? (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-app-danger px-1 text-[11px] font-bold text-white">
-                {Math.min(9, inbox.unreadCount)}
+                {Math.min(9, unreadInboxCount)}
               </span>
             ) : null}
           </Link>
@@ -77,7 +79,7 @@ export default async function DashboardPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-app-muted">Good morning</p>
-            <p className="mt-1 text-xl font-bold text-app-text">You have {inbox.unreadCount} finance update{inbox.unreadCount === 1 ? "" : "s"}</p>
+            <p className="mt-1 text-xl font-bold text-app-text">You have {unreadInboxCount} unread finance update{unreadInboxCount === 1 ? "" : "s"}</p>
           </div>
           <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Inbox</span>
         </div>
@@ -106,6 +108,25 @@ export default async function DashboardPage() {
           <span className="text-sm text-app-muted">Month</span>
         </div>
         <CashFlowChart data={chartData} />
+      </section>
+
+      <section className="mt-5">
+        <h2 className="mb-3 text-lg font-bold text-app-text">Tools</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { href: "/reports", label: "Reports", detail: "Trends and score" },
+            { href: "/goals", label: "Goals", detail: "Shared savings" },
+            { href: "/wealth", label: "Wealth", detail: "Net worth" },
+            { href: "/meeting", label: "Meeting", detail: "Monthly review" },
+            { href: "/feed", label: "Feed", detail: "Household activity" },
+            { href: "/recurring", label: "Recurring", detail: "Bills and income" }
+          ].map((item) => (
+            <Link key={item.href} href={item.href} className="ios-card p-4">
+              <p className="font-bold text-app-text">{item.label}</p>
+              <p className="mt-1 text-sm text-app-muted">{item.detail}</p>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="mt-5">

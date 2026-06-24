@@ -487,6 +487,25 @@ export type Database = {
           updated_at?: string;
         };
       };
+      notification_reads: {
+        Row: {
+          id: string;
+          household_id: string;
+          user_id: string;
+          notification_id: string;
+          read_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          user_id: string;
+          notification_id: string;
+          read_at?: string;
+        };
+        Update: {
+          read_at?: string;
+        };
+      };
       push_subscriptions: {
         Row: {
           id: string;

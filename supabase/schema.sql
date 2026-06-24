@@ -200,6 +200,15 @@ create table public.notification_preferences (
   unique (household_id, user_id)
 );
 
+create table public.notification_reads (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  notification_id text not null,
+  read_at timestamptz not null default now(),
+  unique (household_id, user_id, notification_id)
+);
+
 create table public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households(id) on delete cascade,
@@ -223,6 +232,7 @@ create index financial_notes_household_idx on public.financial_notes(household_i
 create index financial_notes_target_idx on public.financial_notes(target_type, target_id);
 create index net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
 create index notification_preferences_user_idx on public.notification_preferences(user_id, household_id);
+create index notification_reads_user_idx on public.notification_reads(user_id, household_id);
 create index push_subscriptions_user_idx on public.push_subscriptions(user_id, household_id);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -286,6 +296,7 @@ alter table public.goal_contributions enable row level security;
 alter table public.financial_notes enable row level security;
 alter table public.net_worth_snapshots enable row level security;
 alter table public.notification_preferences enable row level security;
+alter table public.notification_reads enable row level security;
 alter table public.push_subscriptions enable row level security;
 
 create policy "Profiles are visible to household members"
@@ -497,6 +508,14 @@ with check (public.is_household_member(household_id) and user_id = auth.uid());
 create policy "Users update own notification preferences"
 on public.notification_preferences for update
 using (public.is_household_member(household_id) and user_id = auth.uid())
+with check (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users view own notification reads"
+on public.notification_reads for select
+using (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Users create own notification reads"
+on public.notification_reads for insert
 with check (public.is_household_member(household_id) and user_id = auth.uid());
 
 create policy "Users view own push subscriptions"

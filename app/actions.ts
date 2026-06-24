@@ -494,6 +494,49 @@ export async function saveNotificationPreferences(formData: FormData) {
   redirect("/notifications?message=Notification controls saved");
 }
 
+export async function markNotificationRead(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const notificationId = value(formData, "notification_id");
+  const next = value(formData, "next") || "/notifications";
+
+  if (!notificationId) redirect(safeNextPath(next));
+
+  await supabase.from("notification_reads").upsert(
+    {
+      household_id: householdId,
+      user_id: user.id,
+      notification_id: notificationId,
+      read_at: new Date().toISOString()
+    },
+    { onConflict: "household_id,user_id,notification_id" }
+  );
+
+  revalidatePath("/notifications");
+  revalidatePath("/dashboard");
+  redirect(safeNextPath(next));
+}
+
+export async function markAllNotificationsRead(formData: FormData) {
+  const { supabase, user, householdId } = await requireHousehold();
+  const ids = formData.getAll("notification_id").map((id) => String(id)).filter(Boolean);
+
+  if (ids.length > 0) {
+    await supabase.from("notification_reads").upsert(
+      ids.map((notificationId) => ({
+        household_id: householdId,
+        user_id: user.id,
+        notification_id: notificationId,
+        read_at: new Date().toISOString()
+      })),
+      { onConflict: "household_id,user_id,notification_id" }
+    );
+  }
+
+  revalidatePath("/notifications");
+  revalidatePath("/dashboard");
+  redirect("/notifications?message=Inbox marked read");
+}
+
 export async function deleteRecurringItem(formData: FormData) {
   const { supabase, householdId } = await requireHousehold();
   await supabase
