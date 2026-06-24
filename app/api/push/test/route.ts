@@ -39,9 +39,21 @@ export async function POST() {
       push.sendNotification(toWebPushSubscription(subscription), payload)
     )
   );
+  const sent = results.filter((result) => result.status === "fulfilled").length;
+  const failures = results
+    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
+
+  if (sent === 0) {
+    return NextResponse.json({
+      error: failures[0] ?? "Push provider rejected the test notification.",
+      failures
+    }, { status: 400 });
+  }
 
   return NextResponse.json({
     ok: true,
-    sent: results.filter((result) => result.status === "fulfilled").length
+    failures,
+    sent
   });
 }

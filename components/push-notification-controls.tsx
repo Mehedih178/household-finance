@@ -86,10 +86,16 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
     setMessage("");
 
     try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Household Finance", {
+          body: "Local notification permission works on this device."
+        });
+      }
+
       const response = await fetch("/api/push/test", { method: "POST" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Could not send test notification.");
-      setMessage(`Test sent to ${result.sent} device${result.sent === 1 ? "" : "s"}.`);
+      setMessage(`Server push sent to ${result.sent} device${result.sent === 1 ? "" : "s"}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not send test notification.");
     } finally {

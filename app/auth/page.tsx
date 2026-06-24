@@ -17,7 +17,7 @@ export default function AuthPage({
         </div>
         <h1 className="text-4xl font-bold tracking-tight text-app-text">Household Finance</h1>
         <p className="mt-3 text-lg leading-7 text-app-muted">
-          Shared budgeting for two people, with private entries when you need them.
+          Shared budgeting for your household, with private entries when you need them.
         </p>
       </section>
 
@@ -36,7 +36,7 @@ export default function AuthPage({
       <section className="ios-card overflow-hidden">
         {isInviteFlow ? (
           <div className="border-b border-app-line bg-app-tint/10 p-5 text-sm leading-6 text-app-muted">
-            You are accepting a household invite. If this is a new account, create it with the same email address the invite was sent to.
+            You are joining a household. Use the exact email address the invite was sent to, then come back to the invite after verifying.
           </div>
         ) : null}
 

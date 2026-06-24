@@ -236,6 +236,8 @@ export async function createInvitation(formData: FormData) {
 
   if (error) redirect(`/onboarding/invite?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/onboarding/invite");
+  revalidatePath("/settings");
+  redirect("/onboarding/invite?created=1");
 }
 
 export async function acceptInvitation(formData: FormData) {
@@ -246,12 +248,43 @@ export async function acceptInvitation(formData: FormData) {
     .from("invitations")
     .select("*")
     .eq("token", token)
-    .eq("status", "pending")
-    .single();
+    .maybeSingle();
 
-  if (error || !invite) redirect(`/invite/${token}?error=Invite not found or already used`);
+  if (error || !invite) redirect(`/invite/${token}?error=Invite not found. Make sure you are signed in with the invited email.`);
 
-  await supabase.from("household_members").upsert(
+  if (invite.status === "accepted") {
+    const { data: membership } = await supabase
+      .from("household_members")
+      .select("household_id")
+      .eq("household_id", invite.household_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (membership) {
+      cookies().set(ACTIVE_HOUSEHOLD_COOKIE, invite.household_id, {
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production"
+      });
+      redirect("/dashboard?joined=1");
+    }
+
+    redirect(`/invite/${token}?error=This invite was already accepted. Ask for a fresh invite if you still cannot see the household.`);
+  }
+
+  if (invite.status !== "pending") {
+    redirect(`/invite/${token}?error=This invite is no longer active.`);
+  }
+
+  if (new Date(invite.expires_at).getTime() < Date.now()) {
+    redirect(`/invite/${token}?error=This invite expired. Ask for a new invite.`);
+  }
+
+  if (invite.email && user.email && invite.email.toLowerCase() !== user.email.toLowerCase()) {
+    redirect(`/invite/${token}?error=${encodeURIComponent(`This invite was sent to ${invite.email}. You are signed in as ${user.email}.`)}`);
+  }
+
+  const { error: membershipError } = await supabase.from("household_members").upsert(
     {
       household_id: invite.household_id,
       user_id: user.id,
@@ -260,7 +293,22 @@ export async function acceptInvitation(formData: FormData) {
     { onConflict: "household_id,user_id" }
   );
 
-  await supabase
+  if (membershipError) {
+    redirect(`/invite/${token}?error=${encodeURIComponent(membershipError.message)}`);
+  }
+
+  const { data: verifiedMembership, error: verifyError } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("household_id", invite.household_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (verifyError || !verifiedMembership) {
+    redirect(`/invite/${token}?error=${encodeURIComponent(verifyError?.message ?? "Could not add you to the household. Try signing out and opening the invite again.")}`);
+  }
+
+  const { error: inviteUpdateError } = await supabase
     .from("invitations")
     .update({
       status: "accepted",
@@ -269,13 +317,18 @@ export async function acceptInvitation(formData: FormData) {
     })
     .eq("id", invite.id);
 
+  if (inviteUpdateError) {
+    redirect(`/invite/${token}?error=${encodeURIComponent(inviteUpdateError.message)}`);
+  }
+
   cookies().set(ACTIVE_HOUSEHOLD_COOKIE, invite.household_id, {
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production"
   });
 
-  redirect("/dashboard");
+  revalidatePath("/", "layout");
+  redirect("/dashboard?joined=1");
 }
 
 export async function createAccount(formData: FormData) {
