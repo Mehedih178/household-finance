@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-app-line/80 bg-app-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-app-line/10 bg-app-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-2">
         {items.map((item) => {
           const Icon = item.icon;
@@ -26,8 +26,8 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-medium text-app-muted transition",
-                active && "text-app-tint"
+                "flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-medium text-app-muted transition duration-150 ease-out active:scale-[0.94]",
+                active && "bg-app-tint/10 text-app-tint"
               )}
               aria-current={active ? "page" : undefined}
             >

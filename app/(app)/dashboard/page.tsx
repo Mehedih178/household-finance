@@ -10,14 +10,14 @@ import { getDashboardData } from "@/lib/data";
 import { defaultNotificationPreferences, generateFinanceInbox } from "@/lib/finance-inbox";
 import { completedGoals, savingsStreak, savingsTotal, underBudgetStreak } from "@/lib/gamification";
 import { financialHealthScore } from "@/lib/insights";
-import { formatCurrency, monthKey } from "@/lib/utils";
+import { categoryEmoji, formatCurrency, formatShortDate, monthKey } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const currentMonth = monthKey();
   const data = await getDashboardData(currentMonth);
   const income = data.transactions.filter((t) => t.kind === "income").reduce((sum, t) => sum + Number(t.amount), 0);
   const expenses = data.transactions.filter((t) => t.kind === "expense").reduce((sum, t) => sum + Number(t.amount), 0);
-  const balance = income - expenses;
+  const cashFlow = income - expenses;
   const daysLeft = daysLeftInMonth(currentMonth);
   const budgetStreak = underBudgetStreak({
     budgets: data.streakBudgets,
@@ -46,6 +46,7 @@ export default async function DashboardPage() {
   const unreadInboxCount = inbox.items.filter((item) => !readIds.has(item.id)).length;
   const totalBudgeted = data.budgets.reduce((sum, budget) => sum + Number(budget.amount), 0);
   const remainingBudget = totalBudgeted - expenses;
+  const budgetUsedPercent = totalBudgeted > 0 ? Math.min(100, Math.max(0, (expenses / totalBudgeted) * 100)) : 0;
   const status = remainingBudget >= 0 ? "You're on track this month" : "You're over plan this month";
   const nextBills = data.recurring.slice(0, 3);
   const health = financialHealthScore({
@@ -86,14 +87,23 @@ export default async function DashboardPage() {
         </div>
       }
     >
-      <section className="rounded-[32px] bg-app-tint p-6 text-white shadow-ios">
+      <section className="rounded-[24px] bg-app-tint p-5 text-white shadow-ios">
         <p className="text-lg font-semibold opacity-85">Good afternoon</p>
         <p className="mt-3 text-2xl font-bold tracking-tight">{status}</p>
         <p className="mt-4 text-5xl font-bold tracking-tight">{formatCurrency(remainingBudget)}</p>
-        <p className="mt-2 text-sm opacity-85">remaining from your monthly plan</p>
-        <div className="mt-5 rounded-3xl bg-white/15 p-4">
-          <p className="text-sm font-semibold opacity-80">Financial health</p>
-          <p className="mt-1 text-3xl font-bold">{health.score}/100</p>
+        <p className="mt-2 text-sm opacity-85">available this month</p>
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/20">
+          <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${budgetUsedPercent}%` }} />
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-white/12 p-3">
+            <p className="text-xs font-semibold opacity-75">Health</p>
+            <p className="mt-1 text-2xl font-bold">{health.score}/100</p>
+          </div>
+          <div className="rounded-2xl bg-white/12 p-3">
+            <p className="text-xs font-semibold opacity-75">Cash flow</p>
+            <p className="mt-1 text-2xl font-bold">{formatCurrency(cashFlow)}</p>
+          </div>
         </div>
       </section>
 
@@ -105,10 +115,10 @@ export default async function DashboardPage() {
       <Link href="/notifications" className="ios-card mt-5 block p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-app-muted">Morning brief</p>
-            <p className="mt-1 text-xl font-bold text-app-text">{unreadInboxCount} unread update{unreadInboxCount === 1 ? "" : "s"}</p>
+            <p className="text-sm font-semibold text-app-muted">Today&apos;s brief</p>
+            <p className="mt-1 text-xl font-bold text-app-text">{unreadInboxCount} update{unreadInboxCount === 1 ? "" : "s"} waiting</p>
           </div>
-          <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Inbox</span>
+          <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Updates</span>
         </div>
         <p className="mt-3 rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{inbox.brief.tip}</p>
       </Link>
@@ -123,7 +133,7 @@ export default async function DashboardPage() {
             <Link key={item.id} href="/recurring" className="ios-card flex items-center justify-between p-4">
               <div>
                 <p className="font-semibold text-app-text">{item.description}</p>
-                <p className="mt-1 text-sm text-app-muted">{item.next_due_on} · {item.frequency}</p>
+                <p className="mt-1 text-sm text-app-muted">{formatShortDate(item.next_due_on)} · {item.frequency}</p>
               </div>
               <p className="font-bold text-app-text">{formatCurrency(Number(item.amount))}</p>
             </Link>
@@ -142,8 +152,8 @@ export default async function DashboardPage() {
           {data.transactions.slice(0, 4).map((transaction) => (
             <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex min-h-[64px] items-center justify-between p-4">
               <div>
-                <p className="font-semibold text-app-text">{transaction.description}</p>
-                <p className="text-sm text-app-muted">{transaction.categories?.name ?? "Uncategorized"} · {transaction.occurred_on}</p>
+                <p className="font-semibold text-app-text">{categoryEmoji(transaction.categories?.name)} {transaction.description}</p>
+                <p className="text-sm text-app-muted">{transaction.categories?.name ?? "Uncategorized"} · {formatShortDate(transaction.occurred_on)}</p>
               </div>
               <p className={transaction.kind === "income" ? "font-bold text-app-success" : "font-bold text-app-text"}>
                 {transaction.kind === "income" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
@@ -195,7 +205,7 @@ export default async function DashboardPage() {
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-app-text">Budget progress</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Monthly plan</h2>
           <Link href="/budgets" className="text-sm font-semibold text-app-tint">Manage</Link>
         </div>
         <div className="grid gap-3">
@@ -243,7 +253,7 @@ export default async function DashboardPage() {
 
       <section className="ios-card mt-5 p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-app-text">Cash flow insight</h2>
+          <h2 className="text-lg font-bold text-app-text">This month</h2>
           <Link href="/reports" className="text-sm font-semibold text-app-tint">Reports</Link>
         </div>
         <CashFlowChart data={chartData} />

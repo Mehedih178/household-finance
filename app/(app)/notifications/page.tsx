@@ -94,7 +94,7 @@ export default async function NotificationsPage({
   const celebrationItems = unreadItems.filter((item) => item.severity === "good" || item.category === "achievements").slice(0, 4);
 
   return (
-    <AppShell title="Inbox" backHref="/settings">
+    <AppShell title="Updates" backHref="/settings">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}
@@ -107,21 +107,23 @@ export default async function NotificationsPage({
         </div>
       ) : null}
 
-      <section className="rounded-[30px] bg-app-tint p-5 text-white shadow-ios">
+      <section className="rounded-[24px] bg-app-tint p-5 text-white shadow-ios">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold opacity-80">Finance Inbox</p>
-            <p className="mt-2 text-3xl font-bold tracking-tight">Inbox ({unreadItems.length})</p>
+            <p className="text-sm font-semibold opacity-80">Today&apos;s Brief</p>
+            <p className="mt-2 text-3xl font-bold tracking-tight">
+              {unreadItems.length > 0 ? `${unreadItems.length} update${unreadItems.length === 1 ? "" : "s"}` : "You're caught up"}
+            </p>
           </div>
           <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-bold capitalize">{preferences.frequency}</span>
         </div>
         <p className="mt-3 text-sm leading-6 opacity-90">
-          Smart alerts for budgets, goals, bills, achievements, household activity, and weekly summaries.
+          A daily read on budgets, bills, goals, household activity, and anything that needs attention.
         </p>
       </section>
 
       <section className="ios-card mt-5 p-4">
-        <h2 className="text-lg font-bold text-app-text">Morning financial brief</h2>
+        <h2 className="text-lg font-bold text-app-text">Morning brief</h2>
         <div className="mt-3 grid gap-2 text-sm">
           <div className="flex justify-between rounded-2xl bg-app-bg px-3 py-2">
             <span className="text-app-muted">Checking</span>
@@ -139,13 +141,13 @@ export default async function NotificationsPage({
         <p className="mt-3 rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{inbox.brief.tip}</p>
       </section>
 
-      <InboxSection title="Needs attention" items={priorityItems} empty="No urgent finance alerts right now." />
+      <InboxSection title="Action needed" items={priorityItems} empty="No urgent finance alerts right now." />
       <InboxSection title="Insights" items={insightItems} empty="More insights appear as you add transactions." />
       <InboxSection title="Wins" items={celebrationItems} empty="Achievements and streaks will appear here." />
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-app-text">Unread</h2>
+          <h2 className="text-lg font-bold text-app-text">New</h2>
           {unreadItems.length > 0 ? (
             <form action={markAllNotificationsRead}>
               {unreadItems.map((item) => <input key={item.id} type="hidden" name="notification_id" value={item.id} />)}
@@ -155,24 +157,24 @@ export default async function NotificationsPage({
         </div>
         <div className="grid gap-3">
           {unreadItems.length > 0 ? unreadItems.map((item) => <InboxCard key={item.id} item={item} read={false} />) : (
-            <div className="ios-card p-4 text-sm text-app-muted">No unread notifications.</div>
+            <div className="ios-card p-4 text-sm text-app-muted">No new updates.</div>
           )}
         </div>
       </section>
 
       <section className="mt-5">
-        <h2 className="mb-3 text-lg font-bold text-app-text">Recently read</h2>
+        <h2 className="mb-3 text-lg font-bold text-app-text">Seen</h2>
         <div className="grid gap-3">
           {readItems.length > 0 ? readItems.map((item) => <InboxCard key={item.id} item={item} read />) : (
-            <div className="ios-card p-4 text-sm text-app-muted">Read notifications will appear here.</div>
+            <div className="ios-card p-4 text-sm text-app-muted">Seen updates will appear here.</div>
           )}
         </div>
       </section>
 
       <form action={saveNotificationPreferences} className="ios-card mt-5 grid gap-4 p-4">
         <div>
-          <h2 className="text-lg font-bold text-app-text">Notification controls</h2>
-          <p className="mt-1 text-sm text-app-muted">Choose how the inbox prioritizes your finance assistant alerts.</p>
+          <h2 className="text-lg font-bold text-app-text">Update controls</h2>
+          <p className="mt-1 text-sm text-app-muted">Choose what your finance assistant should watch.</p>
         </div>
         <Field label="Frequency">
           <select className="ios-input" name="frequency" defaultValue={preferences.frequency}>
@@ -190,7 +192,7 @@ export default async function NotificationsPage({
           <PreferenceToggle name="insights" label="Insights" checked={preferenceValue(preferences, "insights")} />
           <PreferenceToggle name="recurring_transactions" label="Recurring transactions" checked={preferenceValue(preferences, "recurring_transactions")} />
         </div>
-        <button className="ios-button" type="submit">Save controls</button>
+        <button className="ios-button" type="submit">Save updates</button>
       </form>
 
       <PushNotificationControls publicKey={vapidPublicKey} />

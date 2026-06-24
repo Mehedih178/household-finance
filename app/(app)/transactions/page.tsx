@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Plus, Upload } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { requireHousehold } from "@/lib/data";
-import { formatCurrency } from "@/lib/utils";
+import { categoryEmoji, formatCurrency, formatShortDate } from "@/lib/utils";
 
 export default async function TransactionsPage({
   searchParams
@@ -67,11 +67,13 @@ export default async function TransactionsPage({
         {transactions?.map((transaction) => (
           <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex items-center justify-between p-4">
             <div>
-              <p className="font-semibold text-app-text">{transaction.description}</p>
+              <p className="font-semibold text-app-text">{categoryEmoji(transaction.categories?.name)} {transaction.description}</p>
               <p className="text-sm text-app-muted">
-                {transaction.occurred_on} · {transaction.categories?.name ?? "Uncategorized"} · {transaction.is_shared ? "Shared" : "Personal"}
+                {formatShortDate(transaction.occurred_on)} · {transaction.categories?.name ?? "Uncategorized"} · {transaction.is_shared ? "Shared" : "Personal"}
               </p>
-              <p className="mt-1 text-xs text-app-muted">Added by {transaction.profiles?.full_name ?? transaction.profiles?.email ?? "member"}</p>
+              {transaction.is_shared ? (
+                <p className="mt-1 text-xs text-app-muted">Shared by {transaction.profiles?.full_name ?? transaction.profiles?.email ?? "member"}</p>
+              ) : null}
             </div>
             <p className={transaction.kind === "income" ? "font-bold text-app-success" : "font-bold text-app-text"}>
               {transaction.kind === "income" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}

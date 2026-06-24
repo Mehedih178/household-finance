@@ -8,8 +8,8 @@
   --app-card: 255 255 255;
   --app-text: 18 18 20;
   --app-muted: 107 114 128;
-  --app-line: 229 231 235;
-  --app-tint: 0 122 255;
+  --app-line: 220 223 230;
+  --app-tint: 42 120 246;
   --app-success: 52 199 89;
   --app-danger: 255 59 48;
 }
@@ -17,11 +17,11 @@
 .dark {
   color-scheme: dark;
   --app-bg: 0 0 0;
-  --app-card: 28 28 30;
+  --app-card: 24 24 26;
   --app-text: 245 245 247;
   --app-muted: 174 174 178;
-  --app-line: 58 58 60;
-  --app-tint: 10 132 255;
+  --app-line: 255 255 255;
+  --app-tint: 88 166 255;
   --app-success: 48 209 88;
   --app-danger: 255 69 58;
 }
@@ -52,11 +52,11 @@ textarea {
 
 @layer components {
   .ios-card {
-    @apply rounded-ios border border-app-line/70 bg-app-card shadow-ios-sm;
+    @apply rounded-ios border border-app-line/10 bg-app-card shadow-ios-sm transition duration-200 ease-out active:scale-[0.99];
   }
 
   .ios-input {
-    @apply min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-app-line bg-app-card px-4 text-base text-app-text outline-none transition focus:border-app-tint focus:ring-4 focus:ring-app-tint/15;
+    @apply min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-app-line/15 bg-app-card px-4 text-base text-app-text outline-none transition duration-200 focus:border-app-tint focus:ring-4 focus:ring-app-tint/15;
     box-sizing: border-box;
     -webkit-appearance: none;
     appearance: none;
@@ -70,10 +70,10 @@ textarea {
   }
 
   .ios-button {
-    @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-app-tint px-5 text-base font-semibold text-white shadow-ios-sm transition active:scale-[0.98];
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-app-tint px-5 text-base font-semibold text-white shadow-ios-sm transition duration-150 ease-out active:scale-[0.98];
   }
 
   .ios-secondary-button {
-    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-app-line bg-app-card px-5 text-base font-semibold text-app-text transition active:scale-[0.98];
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-app-line/15 bg-app-card px-5 text-base font-semibold text-app-text transition duration-150 ease-out active:scale-[0.98];
   }
 }

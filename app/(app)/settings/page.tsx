@@ -6,6 +6,33 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { requireHousehold } from "@/lib/data";
 import { APP_VERSION, getBuildLabel } from "@/lib/version";
 
+const sections = [
+  {
+    title: "Household",
+    links: [
+      { href: "/onboarding/invite", label: "Invite spouse", detail: "Add your wife to this household" },
+      { href: "/feed", label: "Household feed", detail: "Shared money activity" },
+      { href: "/meeting", label: "Monthly meeting", detail: "Review the month together" },
+      { href: "/goals", label: "Shared goals", detail: "Vacation, savings, and milestones" }
+    ]
+  },
+  {
+    title: "Finance",
+    links: [
+      { href: "/accounts", label: "Accounts", detail: "Checking, savings, cards, loans" },
+      { href: "/recurring", label: "Bills", detail: "Recurring income and expenses" },
+      { href: "/wealth", label: "Wealth", detail: "Net worth and milestones" },
+      { href: "/notifications", label: "Updates", detail: "Briefs, alerts, and push settings" }
+    ]
+  },
+  {
+    title: "Personal",
+    links: [
+      { href: "/profile", label: "Profile", detail: "Your account details" }
+    ]
+  }
+];
+
 export default async function SettingsPage() {
   const { supabase, householdId, householdName, memberships } = await requireHousehold();
   const [{ data: categories }, { data: members }] = await Promise.all([
@@ -40,22 +67,32 @@ export default async function SettingsPage() {
             </button>
           </form>
         ) : null}
-        <div className="mt-4 grid gap-3">
-          <Link href="/feed" className="ios-secondary-button w-full">Household feed</Link>
-          <Link href="/meeting" className="ios-secondary-button w-full">Monthly meeting</Link>
-          <Link href="/wealth" className="ios-secondary-button w-full">Wealth dashboard</Link>
-          <Link href="/notifications" className="ios-secondary-button w-full">Finance inbox</Link>
-          <Link href="/onboarding/invite" className="ios-secondary-button w-full">Invite spouse</Link>
-          <Link href="/goals" className="ios-secondary-button w-full">Shared goals</Link>
-          <Link href="/accounts" className="ios-secondary-button w-full">Accounts</Link>
-          <Link href="/recurring" className="ios-secondary-button w-full">Recurring items</Link>
-          <Link href="/profile" className="ios-secondary-button w-full">Profile</Link>
-        </div>
       </section>
 
       <section className="mt-5 grid gap-3">
         <ThemeToggle />
       </section>
+
+      {sections.map((section) => (
+        <section key={section.title} className="mt-5">
+          <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-[.16em] text-app-muted">{section.title}</h2>
+          <div className="ios-card overflow-hidden">
+            {section.links.map((item, index) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex min-h-16 items-center justify-between gap-3 px-4 py-3 ${index > 0 ? "border-t border-app-line/10" : ""}`}
+              >
+                <div>
+                  <p className="font-semibold text-app-text">{item.label}</p>
+                  <p className="mt-1 text-sm text-app-muted">{item.detail}</p>
+                </div>
+                <span className="text-xl text-app-muted">›</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
 
       <section className="ios-card mt-5 p-4">
         <h2 className="text-lg font-bold text-app-text">Members</h2>

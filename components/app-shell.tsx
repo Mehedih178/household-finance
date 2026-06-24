@@ -18,7 +18,7 @@ export function AppShell({
   return (
     <main className="mx-auto min-h-dvh max-w-md bg-app-bg pb-[calc(88px+env(safe-area-inset-bottom))]">
       <PullToRefresh>
-        <header className="sticky top-0 z-20 border-b border-app-line/70 bg-app-bg/85 px-5 pb-3 pt-[calc(14px+env(safe-area-inset-top))] backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-app-line/10 bg-app-bg/85 px-5 pb-3 pt-[calc(14px+env(safe-area-inset-top))] backdrop-blur-xl">
           {backHref ? (
             <div className="mb-1">
               <BackButton href={backHref} label={backLabel} />

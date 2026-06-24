@@ -4,7 +4,7 @@ import { Field, ToggleRow } from "@/components/form-fields";
 import { ProgressRing } from "@/components/progress-ring";
 import { budgetAlert, daysLeftInMonth, monthRange, previousMonthKey } from "@/lib/budgeting";
 import { requireHousehold } from "@/lib/data";
-import { formatCurrency, monthKey } from "@/lib/utils";
+import { formatCurrency, formatMonthTitle, monthKey } from "@/lib/utils";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
@@ -61,7 +61,7 @@ export default async function BudgetsPage({
 
   return (
     <AppShell
-      title="Budgets"
+      title="Plan"
       action={
         <a href="#add-budget" className="ios-button h-11 min-h-11 rounded-full px-4" aria-label="Add budget">
           <Plus size={20} />
@@ -80,14 +80,27 @@ export default async function BudgetsPage({
         </div>
       ) : null}
 
-      <section className="ios-card p-4">
-        <div className="flex items-center justify-between gap-2">
-          <Link href={`/budgets?month=${previousMonth}`} className="ios-secondary-button min-h-10 px-3 text-sm">Prev</Link>
-          <form className="min-w-0 flex-1">
-            <input className="ios-input min-h-10 text-center text-sm font-bold" type="month" name="month" defaultValue={month} aria-label="Budget month" />
-            <button className="ios-secondary-button mt-2 w-full min-h-10 text-sm" type="submit">Apply month</button>
-          </form>
-          <Link href={`/budgets?month=${nextMonth}`} className="ios-secondary-button min-h-10 px-3 text-sm">Next</Link>
+      <section className="ios-card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <Link href={`/budgets?month=${previousMonth}`} className="ios-secondary-button min-h-10 rounded-xl px-3 text-sm">‹</Link>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-app-muted">{formatMonthTitle(month)}</p>
+            <p className={totalRemaining >= 0 ? "mt-1 text-4xl font-bold tracking-tight text-app-text" : "mt-1 text-4xl font-bold tracking-tight text-app-danger"}>
+              {formatCurrency(totalRemaining)}
+            </p>
+            <p className="mt-1 text-sm text-app-muted">remaining</p>
+          </div>
+          <Link href={`/budgets?month=${nextMonth}`} className="ios-secondary-button min-h-10 rounded-xl px-3 text-sm">›</Link>
+        </div>
+        <form className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+          <input className="ios-input min-h-10 text-center text-sm font-bold" type="month" name="month" defaultValue={month} aria-label="Budget month" />
+          <button className="ios-secondary-button min-h-10 px-3 text-sm" type="submit">Open</button>
+        </form>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-app-bg">
+          <div
+            className="h-full rounded-full bg-app-tint transition-all duration-500"
+            style={{ width: `${totalBudgeted > 0 ? Math.min(100, Math.max(0, (totalSpent / totalBudgeted) * 100)) : 0}%` }}
+          />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl bg-app-bg p-3">
@@ -107,7 +120,7 @@ export default async function BudgetsPage({
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-app-text">Monthly envelopes</h2>
+          <h2 className="text-lg font-bold text-app-text">{formatMonthTitle(month).split(" ")[0]} Plan</h2>
           <a href="#add-budget" className="text-sm font-semibold text-app-tint">Add</a>
         </div>
         <div className="grid gap-3">
@@ -156,7 +169,7 @@ export default async function BudgetsPage({
       </section>
 
       <details id="add-budget" className="ios-card mt-5 scroll-mt-28 p-4" open={budgetRows.length === 0}>
-        <summary className="cursor-pointer list-none text-lg font-bold text-app-text">Add budget</summary>
+        <summary className="cursor-pointer list-none text-lg font-bold text-app-text">Add envelope</summary>
         <form action={createBudget} className="mt-4 grid min-w-0 gap-4">
           <p className="text-sm text-app-muted">Use categories like {starterEnvelopeNames.join(", ")}.</p>
           <Field label="Category">
