@@ -8,6 +8,76 @@ on public.budgets for update
 using (public.is_household_member(household_id) and (owner_id = auth.uid() or is_shared))
 with check (public.is_household_member(household_id) and (owner_id = auth.uid() or is_shared));
 
+create table if not exists public.transaction_receipts (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  transaction_id uuid not null references public.transactions(id) on delete cascade,
+  storage_path text not null unique,
+  file_name text not null,
+  content_type text not null,
+  size_bytes integer not null default 0,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists transaction_receipts_transaction_idx on public.transaction_receipts(transaction_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('receipts', 'receipts', false, 5242880, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+alter table public.transaction_receipts enable row level security;
+
+drop policy if exists "Members view allowed transaction receipts" on public.transaction_receipts;
+drop policy if exists "Members create transaction receipts" on public.transaction_receipts;
+drop policy if exists "Owners delete own transaction receipts" on public.transaction_receipts;
+drop policy if exists "Household members upload receipt files" on storage.objects;
+drop policy if exists "Household members view receipt files" on storage.objects;
+drop policy if exists "Household members delete receipt files" on storage.objects;
+
+create policy "Members view allowed transaction receipts"
+on public.transaction_receipts for select
+using (
+  public.is_household_member(household_id)
+  and exists (
+    select 1 from public.transactions
+    where transactions.id = transaction_receipts.transaction_id
+      and public.can_view_private(transactions.owner_id, transactions.is_shared)
+  )
+);
+
+create policy "Members create transaction receipts"
+on public.transaction_receipts for insert
+with check (public.is_household_member(household_id) and created_by = auth.uid());
+
+create policy "Owners delete own transaction receipts"
+on public.transaction_receipts for delete
+using (public.is_household_member(household_id) and created_by = auth.uid());
+
+create policy "Household members upload receipt files"
+on storage.objects for insert
+with check (
+  bucket_id = 'receipts'
+  and public.is_household_member((split_part(name, '/', 1))::uuid)
+);
+
+create policy "Household members view receipt files"
+on storage.objects for select
+using (
+  bucket_id = 'receipts'
+  and public.is_household_member((split_part(name, '/', 1))::uuid)
+);
+
+create policy "Household members delete receipt files"
+on storage.objects for delete
+using (
+  bucket_id = 'receipts'
+  and public.is_household_member((split_part(name, '/', 1))::uuid)
+);
+
 create table if not exists public.financial_notes (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households(id) on delete cascade,

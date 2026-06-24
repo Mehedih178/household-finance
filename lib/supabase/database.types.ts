@@ -181,6 +181,33 @@ export type Database = {
           updated_at?: string;
         };
       };
+      transaction_receipts: {
+        Row: {
+          id: string;
+          household_id: string;
+          transaction_id: string;
+          storage_path: string;
+          file_name: string;
+          content_type: string;
+          size_bytes: number;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          household_id: string;
+          transaction_id: string;
+          storage_path: string;
+          file_name: string;
+          content_type: string;
+          size_bytes?: number;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: {
+          file_name?: string;
+        };
+      };
       budgets: {
         Row: {
           id: string;

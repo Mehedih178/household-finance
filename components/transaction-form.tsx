@@ -9,21 +9,26 @@ type Transaction = Database["public"]["Tables"]["transactions"]["Row"];
 type FinancialNote = Database["public"]["Tables"]["financial_notes"]["Row"] & {
   profiles?: { full_name: string | null; email: string | null } | null;
 };
+type Receipt = Database["public"]["Tables"]["transaction_receipts"]["Row"] & {
+  signedUrl?: string;
+};
 
 export function TransactionForm({
   transaction,
   categories,
   accounts,
-  notes = []
+  notes = [],
+  receipts = []
 }: {
   transaction?: Transaction;
   categories: Category[];
   accounts: Account[];
   notes?: FinancialNote[];
+  receipts?: Receipt[];
 }) {
   return (
     <div className="grid gap-4">
-      <form action={saveTransaction} className="grid gap-4">
+      <form action={saveTransaction} className="grid gap-4" encType="multipart/form-data">
         <input type="hidden" name="id" value={transaction?.id ?? ""} />
         <Field label="Type">
           <select className="ios-input" name="kind" defaultValue={transaction?.kind ?? "expense"}>
@@ -52,6 +57,9 @@ export function TransactionForm({
             {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
           </select>
         </Field>
+        <Field label="Receipt photos">
+          <input className="ios-input py-3" name="receipts" type="file" accept="image/*" multiple />
+        </Field>
         <ToggleRow name="is_shared" label="Shared with household" description="Turn off to keep this personal." defaultChecked={transaction?.is_shared ?? true} />
         <button className="ios-button" type="submit">{transaction ? "Save changes" : "Add transaction"}</button>
         <Link href="/transactions" className="ios-secondary-button w-full">
@@ -60,6 +68,26 @@ export function TransactionForm({
       </form>
       {transaction ? (
         <>
+          <section className="ios-card grid gap-3 p-4">
+            <div>
+              <h2 className="text-lg font-bold text-app-text">Receipts</h2>
+              <p className="mt-1 text-sm text-app-muted">Photos attached to this transaction.</p>
+            </div>
+            {receipts.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {receipts.map((receipt) => (
+                  receipt.signedUrl ? (
+                    <a key={receipt.id} href={receipt.signedUrl} target="_blank" rel="noreferrer" className="overflow-hidden rounded-2xl border border-app-line bg-app-bg">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={receipt.signedUrl} alt={receipt.file_name} className="aspect-square w-full object-cover" />
+                    </a>
+                  ) : null
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-2xl bg-app-bg p-3 text-sm text-app-muted">No receipts attached yet.</p>
+            )}
+          </section>
           <section className="ios-card grid gap-3 p-4">
             <div>
               <h2 className="text-lg font-bold text-app-text">Notes</h2>

@@ -9,6 +9,7 @@ Mobile-first personal finance PWA for shared household budgeting. It uses Next.j
 - Shared and personal visibility controls for accounts, budgets, transactions, and recurring items
 - Dashboard with household cash flow, recent activity, and budget progress
 - Transaction create, view, edit, delete, filtering, and audit metadata
+- Optional receipt photo uploads attached to transactions
 - CSV transaction import for free bank-export workflows
 - Categories, monthly budgets, accounts, and basic spending reports
 - Household feed with transactions, goal contributions, achievements, and notes
@@ -102,6 +103,7 @@ The schema includes:
 - `household_members`
 - `accounts`
 - `transactions`
+- `transaction_receipts`
 - `categories`
 - `budgets`
 - `recurring_items`

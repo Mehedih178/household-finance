@@ -75,6 +75,18 @@ create table public.transactions (
   updated_at timestamptz not null default now()
 );
 
+create table public.transaction_receipts (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  transaction_id uuid not null references public.transactions(id) on delete cascade,
+  storage_path text not null unique,
+  file_name text not null,
+  content_type text not null,
+  size_bytes integer not null default 0,
+  created_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+
 create table public.budgets (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households(id) on delete cascade,
@@ -202,6 +214,7 @@ create table public.push_subscriptions (
 
 create index accounts_household_idx on public.accounts(household_id);
 create index transactions_household_date_idx on public.transactions(household_id, occurred_on desc);
+create index transaction_receipts_transaction_idx on public.transaction_receipts(transaction_id);
 create index budgets_household_month_idx on public.budgets(household_id, month);
 create index invitations_token_idx on public.invitations(token);
 create index goals_household_idx on public.goals(household_id);
@@ -211,6 +224,13 @@ create index financial_notes_target_idx on public.financial_notes(target_type, t
 create index net_worth_snapshots_household_idx on public.net_worth_snapshots(household_id, snapshot_on desc);
 create index notification_preferences_user_idx on public.notification_preferences(user_id, household_id);
 create index push_subscriptions_user_idx on public.push_subscriptions(user_id, household_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('receipts', 'receipts', false, 5242880, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -257,6 +277,7 @@ alter table public.household_members enable row level security;
 alter table public.categories enable row level security;
 alter table public.accounts enable row level security;
 alter table public.transactions enable row level security;
+alter table public.transaction_receipts enable row level security;
 alter table public.budgets enable row level security;
 alter table public.recurring_items enable row level security;
 alter table public.invitations enable row level security;
@@ -348,6 +369,25 @@ with check (public.is_household_member(household_id) and owner_id = auth.uid());
 create policy "Owners delete own transactions"
 on public.transactions for delete
 using (public.is_household_member(household_id) and owner_id = auth.uid());
+
+create policy "Members view allowed transaction receipts"
+on public.transaction_receipts for select
+using (
+  public.is_household_member(household_id)
+  and exists (
+    select 1 from public.transactions
+    where transactions.id = transaction_receipts.transaction_id
+      and public.can_view_private(transactions.owner_id, transactions.is_shared)
+  )
+);
+
+create policy "Members create transaction receipts"
+on public.transaction_receipts for insert
+with check (public.is_household_member(household_id) and created_by = auth.uid());
+
+create policy "Owners delete own transaction receipts"
+on public.transaction_receipts for delete
+using (public.is_household_member(household_id) and created_by = auth.uid());
 
 create policy "Members view allowed budgets"
 on public.budgets for select
@@ -475,3 +515,24 @@ with check (public.is_household_member(household_id) and user_id = auth.uid());
 create policy "Users delete own push subscriptions"
 on public.push_subscriptions for delete
 using (public.is_household_member(household_id) and user_id = auth.uid());
+
+create policy "Household members upload receipt files"
+on storage.objects for insert
+with check (
+  bucket_id = 'receipts'
+  and public.is_household_member((split_part(name, '/', 1))::uuid)
+);
+
+create policy "Household members view receipt files"
+on storage.objects for select
+using (
+  bucket_id = 'receipts'
+  and public.is_household_member((split_part(name, '/', 1))::uuid)
+);
+
+create policy "Household members delete receipt files"
+on storage.objects for delete
+using (
+  bucket_id = 'receipts'
+  and public.is_household_member((split_part(name, '/', 1))::uuid)
+);

@@ -28,6 +28,65 @@ function authErrorMessage(message: string) {
   return message || "Something went wrong. Please try again.";
 }
 
+function safeFileName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/^-+|-+$/g, "") || "receipt";
+}
+
+async function uploadTransactionReceipts({
+  formData,
+  householdId,
+  supabase,
+  transactionId,
+  userId
+}: {
+  formData: FormData;
+  householdId: string;
+  supabase: ReturnType<typeof createClient>;
+  transactionId: string;
+  userId: string;
+}) {
+  const files = formData
+    .getAll("receipts")
+    .filter((file): file is File => file instanceof File && file.size > 0)
+    .slice(0, 5);
+
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) {
+      redirect(`/transactions/${transactionId}/edit?error=${encodeURIComponent("Receipts must be image files.")}`);
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      redirect(`/transactions/${transactionId}/edit?error=${encodeURIComponent("Receipt images must be 5 MB or smaller.")}`);
+    }
+
+    const storagePath = `${householdId}/${transactionId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+    const { error: uploadError } = await supabase.storage
+      .from("receipts")
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false
+      });
+
+    if (uploadError) {
+      redirect(`/transactions/${transactionId}/edit?error=${encodeURIComponent(uploadError.message)}`);
+    }
+
+    const { error: receiptError } = await supabase.from("transaction_receipts").insert({
+      household_id: householdId,
+      transaction_id: transactionId,
+      storage_path: storagePath,
+      file_name: file.name || "Receipt",
+      content_type: file.type,
+      size_bytes: file.size,
+      created_by: userId
+    });
+
+    if (receiptError) {
+      redirect(`/transactions/${transactionId}/edit?error=${encodeURIComponent(receiptError.message)}`);
+    }
+  }
+}
+
 export async function signIn(formData: FormData) {
   const supabase = createClient();
   const email = value(formData, "email");
@@ -255,10 +314,24 @@ export async function createBudget(formData: FormData) {
       updated_by: user.id
     },
     { onConflict: "household_id,category_id,month" }
-  );
+  ).select("id").single();
 
   if (error) {
     redirect(`/budgets?month=${encodeURIComponent(month)}&error=${encodeURIComponent(error.message)}`);
+  }
+
+  const { data: savedBudget, error: verifyError } = await supabase
+    .from("budgets")
+    .select("id")
+    .eq("household_id", householdId)
+    .eq("category_id", categoryId)
+    .eq("month", `${month}-01`)
+    .maybeSingle();
+
+  if (verifyError || !savedBudget) {
+    redirect(
+      `/budgets?month=${encodeURIComponent(month)}&error=${encodeURIComponent(verifyError?.message ?? "Budget did not save. Check Supabase budget policies.")}`
+    );
   }
 
   revalidatePath("/budgets");
@@ -449,17 +522,31 @@ export async function saveTransaction(formData: FormData) {
     updated_at: new Date().toISOString()
   };
 
+  let transactionId = id;
+
   if (id) {
-    await supabase
+    const { error } = await supabase
       .from("transactions")
       .update(payload)
       .eq("id", id)
       .eq("household_id", householdId);
+    if (error) redirect(`/transactions/${id}/edit?error=${encodeURIComponent(error.message)}`);
   } else {
-    await supabase.from("transactions").insert(payload);
+    const { data, error } = await supabase.from("transactions").insert(payload).select("id").single();
+    if (error || !data) redirect(`/transactions/new?error=${encodeURIComponent(error?.message ?? "Transaction did not save.")}`);
+    transactionId = data.id;
   }
 
+  await uploadTransactionReceipts({
+    formData,
+    householdId,
+    supabase,
+    transactionId,
+    userId: user.id
+  });
+
   revalidatePath("/transactions");
+  revalidatePath(`/transactions/${transactionId}/edit`);
   revalidatePath("/dashboard");
   redirect("/transactions");
 }
