@@ -13,6 +13,22 @@ function base64ToUint8Array(value: string) {
   return output;
 }
 
+function validPublicKeyShape(value: string) {
+  try {
+    return base64ToUint8Array(value).byteLength === 65;
+  } catch {
+    return false;
+  }
+}
+
+type PushStatus = {
+  privateKeyConfigured: boolean;
+  privateKeyValid: boolean;
+  publicKeyConfigured: boolean;
+  publicKeyValid: boolean;
+  subjectConfigured: boolean;
+};
+
 export function PushNotificationControls({ publicKey }: { publicKey: string }) {
   const [message, setMessage] = useState("");
   const [supported, setSupported] = useState(false);
@@ -21,8 +37,10 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
   const [permission, setPermission] = useState("default");
   const [standalone, setStandalone] = useState(false);
   const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
+  const [serverStatus, setServerStatus] = useState<PushStatus | null>(null);
 
   const canEnable = useMemo(() => supported && publicKey.length > 0, [publicKey, supported]);
+  const publicKeyLooksValid = publicKey.length > 0 && validPublicKeyShape(publicKey);
 
   useEffect(() => {
     const available = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -43,6 +61,11 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
       .catch((error) => {
         setMessage(error instanceof Error ? error.message : "Could not prepare push notifications.");
       });
+
+    fetch("/api/push/status")
+      .then((response) => response.ok ? response.json() : null)
+      .then((status) => setServerStatus(status))
+      .catch(() => undefined);
   }, []);
 
   async function enablePush() {
@@ -52,6 +75,11 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
     try {
       if (!canEnable) {
         setMessage(publicKey ? "Push notifications are not supported on this browser." : "Missing VAPID public key in Vercel environment variables.");
+        return;
+      }
+
+      if (!publicKeyLooksValid) {
+        setMessage("VAPID public key is not valid. Generate a fresh matched key pair and redeploy.");
         return;
       }
 
@@ -140,6 +168,43 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
     }
   }
 
+  async function resetPush() {
+    setBusy(true);
+    setMessage("");
+
+    try {
+      if (!supported) {
+        setMessage("This browser does not support web push, so there is no device subscription to reset here.");
+        return;
+      }
+
+      const registration = await navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => navigator.serviceWorker.ready);
+      const subscription = await registration.pushManager.getSubscription();
+      const endpoint = subscription?.endpoint;
+
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+
+      const response = await fetch("/api/push/subscribe", {
+        body: JSON.stringify(endpoint ? { endpoint } : { all: true }),
+        headers: { "content-type": "application/json" },
+        method: "DELETE"
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Could not reset push notifications.");
+
+      setSubscribed(false);
+      setMessage("Push reset complete. Tap Enable push notifications to create a fresh device subscription.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not reset push notifications.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="ios-card mt-5 grid gap-3 p-4">
       <div>
@@ -154,6 +219,9 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
       <button className="ios-secondary-button disabled:opacity-50" type="button" disabled={busy} onClick={sendTest}>
         Send test notification
       </button>
+      <button className="ios-secondary-button disabled:opacity-50 text-app-danger" type="button" disabled={busy} onClick={resetPush}>
+        Force reset this device
+      </button>
       {!supported ? (
         <p className="rounded-2xl bg-app-bg p-3 text-sm text-app-muted">
           This browser does not support web push. Use the installed iPhone Home Screen app or a compatible browser.
@@ -164,7 +232,9 @@ export function PushNotificationControls({ publicKey }: { publicKey: string }) {
         <p>Service worker: {serviceWorkerReady ? "ready" : "not ready yet"}</p>
         <p>Installed app mode: {standalone ? "yes" : "no — on iPhone, use Add to Home Screen first"}</p>
         <p>Permission: {permission}</p>
-        <p>VAPID key: {publicKey ? "configured" : "missing in Vercel env"}</p>
+        <p>VAPID public key: {publicKey ? publicKeyLooksValid ? "configured and valid-looking" : "configured but invalid-looking" : "missing in Vercel env"}</p>
+        <p>VAPID private key: {serverStatus ? serverStatus.privateKeyConfigured ? serverStatus.privateKeyValid ? "configured and valid-looking" : "configured but invalid-looking" : "missing in Vercel env" : "checking..."}</p>
+        <p>VAPID subject: {serverStatus ? serverStatus.subjectConfigured ? "configured" : "missing" : "checking..."}</p>
       </div>
       {message ? <p className="rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{message}</p> : null}
     </section>

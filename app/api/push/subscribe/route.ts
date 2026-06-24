@@ -42,18 +42,24 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { supabase, user } = await requireHousehold();
-  const body = (await request.json()) as { endpoint?: string };
+  const { supabase, householdId, user } = await requireHousehold();
+  const body = (await request.json()) as { all?: boolean; endpoint?: string };
 
-  if (!body.endpoint) {
+  if (!body.endpoint && !body.all) {
     return NextResponse.json({ error: "Missing endpoint." }, { status: 400 });
   }
 
-  const { error } = await supabase
+  let query = supabase
     .from("push_subscriptions")
     .delete()
-    .eq("endpoint", body.endpoint)
+    .eq("household_id", householdId)
     .eq("user_id", user.id);
+
+  if (!body.all && body.endpoint) {
+    query = query.eq("endpoint", body.endpoint);
+  }
+
+  const { error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
