@@ -2,12 +2,14 @@ import Link from "next/link";
 import { Bell, Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CashFlowChart } from "@/components/charts";
+import { InstallPromptCard } from "@/components/install-prompt-card";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatCard } from "@/components/stat-card";
 import { budgetAlert, daysLeftInMonth } from "@/lib/budgeting";
 import { getDashboardData } from "@/lib/data";
 import { defaultNotificationPreferences, generateFinanceInbox } from "@/lib/finance-inbox";
 import { completedGoals, savingsStreak, savingsTotal, underBudgetStreak } from "@/lib/gamification";
+import { financialHealthScore } from "@/lib/insights";
 import { formatCurrency, monthKey } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -42,6 +44,15 @@ export default async function DashboardPage() {
   });
   const readIds = new Set(data.notificationReads.map((item) => item.notification_id));
   const unreadInboxCount = inbox.items.filter((item) => !readIds.has(item.id)).length;
+  const totalBudgeted = data.budgets.reduce((sum, budget) => sum + Number(budget.amount), 0);
+  const remainingBudget = totalBudgeted - expenses;
+  const status = remainingBudget >= 0 ? "You're on track this month" : "You're over plan this month";
+  const nextBills = data.recurring.slice(0, 3);
+  const health = financialHealthScore({
+    currentBudgets: data.budgets,
+    currentTransactions: data.transactions,
+    previousTransactions: data.previousTransactions
+  });
 
   const chartData = Array.from({ length: 4 }).map((_, index) => {
     const week = index + 1;
@@ -75,26 +86,15 @@ export default async function DashboardPage() {
         </div>
       }
     >
-      <Link href="/notifications" className="ios-card mb-5 block p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-app-muted">Good morning</p>
-            <p className="mt-1 text-xl font-bold text-app-text">You have {unreadInboxCount} unread finance update{unreadInboxCount === 1 ? "" : "s"}</p>
-          </div>
-          <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Inbox</span>
+      <section className="rounded-[32px] bg-app-tint p-6 text-white shadow-ios">
+        <p className="text-lg font-semibold opacity-85">Good afternoon</p>
+        <p className="mt-3 text-2xl font-bold tracking-tight">{status}</p>
+        <p className="mt-4 text-5xl font-bold tracking-tight">{formatCurrency(remainingBudget)}</p>
+        <p className="mt-2 text-sm opacity-85">remaining from your monthly plan</p>
+        <div className="mt-5 rounded-3xl bg-white/15 p-4">
+          <p className="text-sm font-semibold opacity-80">Financial health</p>
+          <p className="mt-1 text-3xl font-bold">{health.score}/100</p>
         </div>
-        <ul className="mt-3 grid gap-1 text-sm text-app-muted">
-          {inbox.brief.summary.map((line) => (
-            <li key={line}>• {line}</li>
-          ))}
-        </ul>
-        <p className="mt-3 rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{inbox.brief.tip}</p>
-      </Link>
-
-      <section className="rounded-[30px] bg-app-tint p-5 text-white shadow-ios">
-        <p className="text-sm font-semibold opacity-80">Household cash flow</p>
-        <p className="mt-2 text-4xl font-bold tracking-tight">{formatCurrency(balance)}</p>
-        <p className="mt-2 text-sm opacity-85">{data.householdName} this month</p>
       </section>
 
       <section className="mt-5 grid grid-cols-2 gap-3">
@@ -102,28 +102,52 @@ export default async function DashboardPage() {
         <StatCard label="Spent" value={expenses} tone="bad" />
       </section>
 
-      <section className="ios-card mt-5 p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-app-text">Cash flow</h2>
-          <span className="text-sm text-app-muted">Month</span>
+      <Link href="/notifications" className="ios-card mt-5 block p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-app-muted">Morning brief</p>
+            <p className="mt-1 text-xl font-bold text-app-text">{unreadInboxCount} unread update{unreadInboxCount === 1 ? "" : "s"}</p>
+          </div>
+          <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Inbox</span>
         </div>
-        <CashFlowChart data={chartData} />
+        <p className="mt-3 rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{inbox.brief.tip}</p>
+      </Link>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Upcoming bills</h2>
+          <Link href="/recurring" className="text-sm font-semibold text-app-tint">Manage</Link>
+        </div>
+        <div className="grid gap-3">
+          {nextBills.length > 0 ? nextBills.map((item) => (
+            <Link key={item.id} href="/recurring" className="ios-card flex items-center justify-between p-4">
+              <div>
+                <p className="font-semibold text-app-text">{item.description}</p>
+                <p className="mt-1 text-sm text-app-muted">{item.next_due_on} · {item.frequency}</p>
+              </div>
+              <p className="font-bold text-app-text">{formatCurrency(Number(item.amount))}</p>
+            </Link>
+          )) : (
+            <Link href="/recurring" className="ios-card block p-4 text-center font-semibold text-app-tint">Add recurring bills</Link>
+          )}
+        </div>
       </section>
 
       <section className="mt-5">
-        <h2 className="mb-3 text-lg font-bold text-app-text">Tools</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { href: "/reports", label: "Reports", detail: "Trends and score" },
-            { href: "/goals", label: "Goals", detail: "Shared savings" },
-            { href: "/wealth", label: "Wealth", detail: "Net worth" },
-            { href: "/meeting", label: "Meeting", detail: "Monthly review" },
-            { href: "/feed", label: "Feed", detail: "Household activity" },
-            { href: "/recurring", label: "Recurring", detail: "Bills and income" }
-          ].map((item) => (
-            <Link key={item.href} href={item.href} className="ios-card p-4">
-              <p className="font-bold text-app-text">{item.label}</p>
-              <p className="mt-1 text-sm text-app-muted">{item.detail}</p>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Recent activity</h2>
+          <Link href="/transactions" className="text-sm font-semibold text-app-tint">See all</Link>
+        </div>
+        <div className="grid gap-3">
+          {data.transactions.slice(0, 4).map((transaction) => (
+            <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex min-h-[64px] items-center justify-between p-4">
+              <div>
+                <p className="font-semibold text-app-text">{transaction.description}</p>
+                <p className="text-sm text-app-muted">{transaction.categories?.name ?? "Uncategorized"} · {transaction.occurred_on}</p>
+              </div>
+              <p className={transaction.kind === "income" ? "font-bold text-app-success" : "font-bold text-app-text"}>
+                {transaction.kind === "income" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
+              </p>
             </Link>
           ))}
         </div>
@@ -171,7 +195,7 @@ export default async function DashboardPage() {
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-app-text">Budgets</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Budget progress</h2>
           <Link href="/budgets" className="text-sm font-semibold text-app-tint">Manage</Link>
         </div>
         <div className="grid gap-3">
@@ -217,25 +241,15 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="mt-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-app-text">Recent</h2>
-          <Link href="/transactions" className="text-sm font-semibold text-app-tint">See all</Link>
+      <section className="ios-card mt-5 p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-app-text">Cash flow insight</h2>
+          <Link href="/reports" className="text-sm font-semibold text-app-tint">Reports</Link>
         </div>
-        <div className="grid gap-3">
-          {data.transactions.slice(0, 5).map((transaction) => (
-            <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex items-center justify-between p-4">
-              <div>
-                <p className="font-semibold text-app-text">{transaction.description}</p>
-                <p className="text-sm text-app-muted">{transaction.categories?.name ?? "Uncategorized"} · {transaction.is_shared ? "Shared" : "Personal"}</p>
-              </div>
-              <p className={transaction.kind === "income" ? "font-bold text-app-success" : "font-bold text-app-text"}>
-                {transaction.kind === "income" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
-              </p>
-            </Link>
-          ))}
-        </div>
+        <CashFlowChart data={chartData} />
       </section>
+
+      <InstallPromptCard />
     </AppShell>
   );
 }

@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CreditCard, Home, PieChart, Settings } from "lucide-react";
+import { CreditCard, Home, ListChecks, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/transactions", label: "Activity", icon: CreditCard },
-  { href: "/budgets", label: "Budgets", icon: PieChart },
-  { href: "/notifications", label: "Inbox", icon: Bell },
+  { href: "/planning", label: "Planning", icon: ListChecks },
   { href: "/settings", label: "More", icon: Settings }
 ];
 
@@ -18,7 +17,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-app-line/80 bg-app-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pt-2">
+      <div className="mx-auto grid max-w-md grid-cols-4 px-2 pt-2">
         {items.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
