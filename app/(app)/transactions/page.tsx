@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { requireHousehold } from "@/lib/data";
 import { categoryEmoji, formatCurrency, formatShortDate, monthKey } from "@/lib/utils";
@@ -52,14 +51,7 @@ export default async function TransactionsPage({
   const dayKeys = Object.keys(groupedTransactions);
 
   return (
-    <AppShell
-      title="Transactions"
-      action={
-        <Link href="/transactions/new" className="ios-button h-11 min-h-11 rounded-full px-4" aria-label="Add transaction">
-          <Plus size={20} />
-        </Link>
-      }
-    >
+    <AppShell title="Activity">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}
@@ -79,6 +71,19 @@ export default async function TransactionsPage({
           {formatCurrency(monthSpent)} spent across {(transactions ?? []).length} transaction{(transactions ?? []).length === 1 ? "" : "s"}
         </p>
       </section>
+
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        {[
+          { href: "/transactions", label: "All" },
+          { href: "/transactions?kind=expense", label: "Spent" },
+          { href: "/transactions?kind=income", label: "Income" },
+          { href: "/transactions/new", label: "Add new" }
+        ].map((item) => (
+          <Link key={item.href} href={item.href} className="ios-secondary-button min-h-10 shrink-0 px-4 text-sm">
+            {item.label}
+          </Link>
+        ))}
+      </div>
 
       <form className="mb-4 grid grid-cols-3 gap-2">
         <select className="ios-input px-2 text-sm" name="kind" defaultValue={searchParams?.kind ?? ""}>

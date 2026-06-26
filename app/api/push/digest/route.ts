@@ -33,6 +33,8 @@ export async function GET(request: Request) {
 
   let sent = 0;
   let failed = 0;
+  const today = new Date();
+  const weekday = today.getUTCDay();
 
   for (const subscription of (subscriptions ?? []) as PushSubscriptionRow[]) {
     const [
@@ -72,6 +74,16 @@ export async function GET(request: Request) {
       supabase.from("net_worth_snapshots").select("*").eq("household_id", subscription.household_id).order("snapshot_on", { ascending: false }).limit(6)
     ]);
 
+    const resolvedPreferences = preferences ?? defaultNotificationPreferences;
+    const shouldSend =
+      resolvedPreferences.frequency === "weekly"
+        ? weekday === 0
+        : true;
+
+    if (!shouldSend) {
+      continue;
+    }
+
     const inbox = generateFinanceInbox({
       accounts: accounts ?? [],
       budgets: budgets ?? [],
@@ -79,7 +91,7 @@ export async function GET(request: Request) {
       currentMonthTransactions: currentTransactions ?? [],
       goals: goals ?? [],
       previousMonthTransactions: previousTransactions ?? [],
-      preferences: preferences ?? defaultNotificationPreferences,
+      preferences: resolvedPreferences,
       recurring: recurring ?? [],
       snapshots: snapshots ?? [],
       userId: subscription.user_id

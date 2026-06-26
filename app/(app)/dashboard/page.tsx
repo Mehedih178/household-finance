@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ReminderStatusCard } from "@/components/reminder-status-card";
 import { getDashboardData } from "@/lib/data";
+import { defaultNotificationPreferences, generateFinanceInbox } from "@/lib/finance-inbox";
+import { getVapidPublicKey } from "@/lib/push";
 import { categoryEmoji, formatCurrency, formatShortDate, monthKey } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -14,6 +16,7 @@ export default async function DashboardPage() {
   const remainingBudget = totalBudgeted - expenses;
   const budgetUsedPercent = totalBudgeted > 0 ? Math.min(100, Math.max(0, (expenses / totalBudgeted) * 100)) : 0;
   const nextBill = data.recurring.find((item) => item.kind === "expense");
+  const reminderFrequency = data.notificationPreferences?.frequency ?? defaultNotificationPreferences.frequency;
   const previousExpenses = data.previousTransactions
     .filter((transaction) => transaction.kind === "expense")
     .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
@@ -29,11 +32,30 @@ export default async function DashboardPage() {
       return { ...goal, percent, saved };
     })
     .sort((first, second) => second.percent - first.percent)[0];
+  const inbox = generateFinanceInbox({
+    accounts: data.accounts,
+    budgets: data.budgets,
+    contributions: data.goalContributions,
+    currentMonthTransactions: data.transactions,
+    goals: data.goals,
+    previousMonthTransactions: data.previousTransactions,
+    preferences: data.notificationPreferences ?? defaultNotificationPreferences,
+    recurring: data.recurring,
+    snapshots: data.snapshots,
+    userId: data.user.id
+  });
+  const readIds = new Set(data.notificationReads.map((item) => item.notification_id));
+  const unreadItems = inbox.items.filter((item) => !readIds.has(item.id));
+  const topAlerts = unreadItems.slice(0, 2);
 
   const greetingHour = new Date().getHours();
   const greeting = greetingHour < 12 ? "Good morning" : greetingHour < 18 ? "Good afternoon" : "Good evening";
   const monthLabel = new Date(`${currentMonth}-01T00:00:00`).toLocaleDateString("en-US", { month: "long" });
-  const householdStatus = remainingBudget >= 0 ? "Your household is doing well." : "Your household needs attention.";
+  const householdStatus = unreadItems.length > 0
+    ? `${unreadItems.length} thing${unreadItems.length === 1 ? "" : "s"} need attention.`
+    : remainingBudget >= 0
+      ? "Your household is on track."
+      : "Your household needs attention.";
   const spendingLine = spendingDelta === null
     ? "Add another month of history to compare your pace."
     : `${Math.abs(spendingDelta)}% ${spendingDelta > 0 ? "more" : "less"} spent than last month`;
@@ -43,16 +65,10 @@ export default async function DashboardPage() {
   const householdLine = data.memberships.length > 1
     ? `${data.memberships.length} people are sharing this plan`
     : "Invite your partner to manage money together";
+  const publicKey = getVapidPublicKey();
 
   return (
-    <AppShell
-      title="Today"
-      action={
-        <Link href="/transactions/new" className="ios-button h-11 min-h-11 rounded-full px-4" aria-label="Add transaction">
-          <Plus size={20} />
-        </Link>
-      }
-    >
+    <AppShell title="Home">
       <section className="ios-card p-5">
         <p className="text-lg font-medium text-app-muted">{greeting}</p>
         <p className="mt-2 text-3xl font-extrabold tracking-tight text-app-text">{householdStatus}</p>
@@ -74,12 +90,12 @@ export default async function DashboardPage() {
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-app-bg px-3 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[.16em] text-app-muted">Coming up</p>
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-app-muted">Next up</p>
             <p className="mt-2 text-sm font-semibold text-app-text">{billLine}</p>
           </div>
           <div className="rounded-2xl bg-app-bg px-3 py-3">
-            <p className="text-xs font-semibold uppercase tracking-[.16em] text-app-muted">This month</p>
-            <p className="mt-2 text-sm font-semibold text-app-text">{formatCurrency(expenses)} spent so far</p>
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-app-muted">Today&apos;s brief</p>
+            <p className="mt-2 text-sm font-semibold text-app-text">{inbox.brief.tip}</p>
           </div>
           <div className="rounded-2xl bg-app-bg px-3 py-3">
             <p className="text-xs font-semibold uppercase tracking-[.16em] text-app-muted">Household</p>
@@ -90,28 +106,70 @@ export default async function DashboardPage() {
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-app-text">What matters today</h2>
-          <Link href="/planning" className="text-sm font-semibold text-app-tint">See plan</Link>
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Quick actions</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/transactions/new" className="ios-card p-4">
+            <p className="text-sm font-semibold text-app-muted">Add</p>
+            <p className="mt-2 text-lg font-bold text-app-text">Transaction</p>
+          </Link>
+          <Link href="/budgets" className="ios-card p-4">
+            <p className="text-sm font-semibold text-app-muted">Review</p>
+            <p className="mt-2 text-lg font-bold text-app-text">Budgets</p>
+          </Link>
+          <Link href="/recurring" className="ios-card p-4">
+            <p className="text-sm font-semibold text-app-muted">Manage</p>
+            <p className="mt-2 text-lg font-bold text-app-text">Bills</p>
+          </Link>
+          <Link href="/accounts" className="ios-card p-4">
+            <p className="text-sm font-semibold text-app-muted">Check</p>
+            <p className="mt-2 text-lg font-bold text-app-text">Accounts</p>
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Daily check-in</h2>
+          <Link href="/settings#reminders" className="text-sm font-semibold text-app-tint">Reminders</Link>
         </div>
         <div className="grid gap-3">
+          {publicKey ? <ReminderStatusCard frequency={reminderFrequency} /> : null}
+          <div className="ios-card p-4">
+            <p className="text-sm font-semibold text-app-muted">What matters right now</p>
+            <div className="mt-3 grid gap-3">
+              {(topAlerts.length > 0 ? topAlerts : inbox.items.slice(0, 2)).map((item) => (
+                <Link key={item.id} href={item.href} className="rounded-2xl bg-app-bg p-3">
+                  <p className="text-sm font-semibold text-app-text">{item.emoji} {item.title}</p>
+                  <p className="mt-1 text-sm text-app-muted">{item.detail}</p>
+                </Link>
+              ))}
+              {inbox.items.length === 0 ? (
+                <div className="rounded-2xl bg-app-bg p-3">
+                  <p className="text-sm font-semibold text-app-text">Everything looks calm.</p>
+                  <p className="mt-1 text-sm text-app-muted">You&apos;re on track this month.</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">At a glance</h2>
+          <Link href="/planning" className="text-sm font-semibold text-app-tint">Open plan</Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="ios-card p-4">
             <p className="text-sm font-semibold text-app-muted">Spending pace</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-app-text">{formatCurrency(expenses)} spent so far</p>
-            <p className="mt-1 text-sm text-app-muted">
-              {data.transactions.length} transaction{data.transactions.length === 1 ? "" : "s"} reviewed this month
-            </p>
-          </div>
-          <div className="ios-card p-4">
-            <p className="text-sm font-semibold text-app-muted">Upcoming bill</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-app-text">
-              {nextBill ? formatCurrency(Number(nextBill.amount)) : "All clear"}
-            </p>
-            <p className="mt-1 text-sm text-app-muted">{billLine}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-app-text">{formatCurrency(expenses)} spent</p>
+            <p className="mt-1 text-sm text-app-muted">{spendingLine}</p>
           </div>
           <div className="ios-card p-4">
             <p className="text-sm font-semibold text-app-muted">Shared goal</p>
             <p className="mt-2 text-2xl font-bold tracking-tight text-app-text">
-              {topGoal ? `${topGoal.percent}% funded` : "Start with one goal"}
+              {topGoal ? `${topGoal.percent}% funded` : "Start one goal"}
             </p>
             <p className="mt-1 text-sm text-app-muted">
               {topGoal ? `${topGoal.name} has ${formatCurrency(topGoal.saved)} saved.` : "A shared goal makes the plan feel real."}
@@ -126,7 +184,7 @@ export default async function DashboardPage() {
           <Link href="/transactions" className="text-sm font-semibold text-app-tint">See all</Link>
         </div>
         <div className="grid gap-3">
-          {data.transactions.slice(0, 4).map((transaction) => (
+          {data.transactions.slice(0, 3).map((transaction) => (
             <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex min-h-[72px] items-center justify-between gap-3 p-4">
               <div>
                 <p className="font-semibold text-app-text">{categoryEmoji(transaction.categories?.name)} {transaction.description}</p>

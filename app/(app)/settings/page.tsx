@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createCategory, signOut, updateHouseholdName } from "@/app/actions";
+import { createCategory, saveNotificationPreferences, signOut, updateHouseholdName } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
 import { HouseholdSiteSwitcher } from "@/components/household-site-switcher";
@@ -7,6 +7,7 @@ import { PendingInvites } from "@/components/pending-invites";
 import { PushNotificationControls } from "@/components/push-notification-controls";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { requireHousehold } from "@/lib/data";
+import { defaultNotificationPreferences } from "@/lib/finance-inbox";
 import { getVapidPublicKey } from "@/lib/push";
 import { APP_VERSION, getBuildLabel } from "@/lib/version";
 
@@ -23,15 +24,17 @@ export default async function SettingsPage({
 }: {
   searchParams?: { error?: string; message?: string; renamed?: string };
 }) {
-  const { supabase, householdId, householdName, memberships } = await requireHousehold();
-  const [{ data: categories }, { data: members }] = await Promise.all([
+  const { supabase, user, householdId, householdName, memberships } = await requireHousehold();
+  const [{ data: categories }, { data: members }, { data: notificationPreferences }] = await Promise.all([
     supabase.from("categories").select("*").eq("household_id", householdId).order("kind").order("name"),
-    supabase.from("household_members").select("role, profiles(full_name, email)").eq("household_id", householdId)
+    supabase.from("household_members").select("role, profiles(full_name, email)").eq("household_id", householdId),
+    supabase.from("notification_preferences").select("*").eq("household_id", householdId).eq("user_id", user.id).maybeSingle()
   ]);
   const vapidPublicKey = getVapidPublicKey();
+  const preferences = notificationPreferences ?? defaultNotificationPreferences;
 
   return (
-    <AppShell title="Settings">
+    <AppShell title="Household">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}
@@ -69,7 +72,7 @@ export default async function SettingsPage({
       <HouseholdSiteSwitcher activeHouseholdId={householdId} memberships={memberships} className="mt-5" />
 
       <section className="mt-5">
-        <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-[.16em] text-app-muted">Keep it simple</h2>
+        <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-[.16em] text-app-muted">Money setup</h2>
         <div className="ios-card overflow-hidden">
           {sections.map((item, index) => (
             <Link
@@ -85,6 +88,51 @@ export default async function SettingsPage({
             </Link>
           ))}
         </div>
+      </section>
+
+      <section className="ios-card mt-5 grid gap-4 p-4" id="reminders">
+        <div>
+          <h2 className="text-lg font-bold text-app-text">Daily reminders</h2>
+          <p className="mt-1 text-sm text-app-muted">Keep reminder setup simple: choose when to hear from the app, then enable push on this iPhone.</p>
+        </div>
+        <form action={saveNotificationPreferences} className="grid gap-4">
+          <Field label="Reminder schedule">
+            <select className="ios-input" name="frequency" defaultValue={preferences.frequency}>
+              <option value="daily">Daily brief</option>
+              <option value="weekly">Weekly recap</option>
+              <option value="instant">As often as possible</option>
+            </select>
+          </Field>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Budget alerts</span>
+            <input name="budget_alerts" type="checkbox" defaultChecked={preferences.budget_alerts} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Bills and subscriptions</span>
+            <input name="bills" type="checkbox" defaultChecked={preferences.bills} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Goals and milestones</span>
+            <input name="goals" type="checkbox" defaultChecked={preferences.goals} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Household activity</span>
+            <input name="household_activity" type="checkbox" defaultChecked={preferences.household_activity} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Insights and trends</span>
+            <input name="insights" type="checkbox" defaultChecked={preferences.insights} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Achievements</span>
+            <input name="achievements" type="checkbox" defaultChecked={preferences.achievements} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
+            <span>Recurring transactions</span>
+            <input name="recurring_transactions" type="checkbox" defaultChecked={preferences.recurring_transactions} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
+          </label>
+          <button className="ios-button" type="submit">Save reminder preferences</button>
+        </form>
       </section>
 
       <section className="ios-card mt-5 p-4">
