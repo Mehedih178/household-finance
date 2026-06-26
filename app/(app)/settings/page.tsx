@@ -19,12 +19,12 @@ const sections = [
     ]
   },
   {
-    title: "Finance",
+    title: "Money",
     links: [
       { href: "/accounts", label: "Accounts", detail: "Checking, savings, cards, loans" },
       { href: "/recurring", label: "Bills", detail: "Recurring income and expenses" },
       { href: "/wealth", label: "Wealth", detail: "Net worth and milestones" },
-      { href: "/notifications", label: "Updates", detail: "Briefs, alerts, and push settings" }
+      { href: "/notifications", label: "Briefing", detail: "Daily brief, alerts, and push settings" }
     ]
   },
   {
@@ -47,7 +47,7 @@ export default async function SettingsPage({
   ]);
 
   return (
-    <AppShell title="More">
+    <AppShell title="Settings">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}

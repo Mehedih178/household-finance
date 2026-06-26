@@ -37,7 +37,7 @@ const config: Config = {
         "ios-sm": "0 4px 16px rgba(0, 0, 0, 0.06)"
       },
       borderRadius: {
-        ios: "24px"
+        ios: "20px"
       }
     }
   },

@@ -65,17 +65,22 @@ export default async function TransactionsPage({
 
       <div className="grid gap-3">
         {transactions?.map((transaction) => (
-          <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex items-center justify-between p-4">
-            <div>
-              <p className="font-semibold text-app-text">{categoryEmoji(transaction.categories?.name)} {transaction.description}</p>
-              <p className="text-sm text-app-muted">
-                {formatShortDate(transaction.occurred_on)} · {transaction.categories?.name ?? "Uncategorized"} · {transaction.is_shared ? "Shared" : "Personal"}
-              </p>
-              {transaction.is_shared ? (
-                <p className="mt-1 text-xs text-app-muted">Shared by {transaction.profiles?.full_name ?? transaction.profiles?.email ?? "member"}</p>
-              ) : null}
+          <Link href={`/transactions/${transaction.id}/edit`} key={transaction.id} className="ios-card flex min-h-[76px] items-center justify-between gap-3 p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-bg text-xl">
+                {categoryEmoji(transaction.categories?.name)}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[17px] font-semibold text-app-text">{transaction.description}</p>
+                <p className="mt-1 text-sm text-app-muted">
+                  {transaction.categories?.name ?? "Uncategorized"} · {formatShortDate(transaction.occurred_on)}
+                </p>
+                {transaction.is_shared ? (
+                  <p className="mt-1 text-xs text-app-muted">Shared by {transaction.profiles?.full_name ?? transaction.profiles?.email ?? "member"}</p>
+                ) : null}
+              </div>
             </div>
-            <p className={transaction.kind === "income" ? "font-bold text-app-success" : "font-bold text-app-text"}>
+            <p className={transaction.kind === "income" ? "shrink-0 font-bold text-app-success" : "shrink-0 font-bold text-app-text"}>
               {transaction.kind === "income" ? "+" : "-"}{formatCurrency(Number(transaction.amount))}
             </p>
           </Link>

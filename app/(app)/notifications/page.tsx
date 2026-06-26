@@ -7,7 +7,7 @@ import { monthRange, previousMonthKey } from "@/lib/budgeting";
 import { requireHousehold } from "@/lib/data";
 import { defaultNotificationPreferences, generateFinanceInbox, type FinanceInboxItem } from "@/lib/finance-inbox";
 import { getVapidPublicKey } from "@/lib/push";
-import { formatCurrency, monthKey } from "@/lib/utils";
+import { formatCurrency, formatShortDate, monthKey } from "@/lib/utils";
 
 function toneClasses(severity: FinanceInboxItem["severity"]) {
   if (severity === "danger") return "border-app-danger/30 bg-app-danger/10";
@@ -92,9 +92,19 @@ export default async function NotificationsPage({
   const priorityItems = unreadItems.filter((item) => item.severity === "danger" || item.severity === "warning").slice(0, 4);
   const insightItems = unreadItems.filter((item) => item.category === "insights").slice(0, 4);
   const celebrationItems = unreadItems.filter((item) => item.severity === "good" || item.category === "achievements").slice(0, 4);
+  const upcomingBill = (recurring ?? [])[0];
+  const goalProgress = (goals ?? [])
+    .map((goal) => {
+      const saved = (contributions ?? [])
+        .filter((contribution) => contribution.goal_id === goal.id)
+        .reduce((sum, contribution) => sum + Number(contribution.amount), 0);
+      const percent = Number(goal.target_amount) > 0 ? Math.round((saved / Number(goal.target_amount)) * 100) : 0;
+      return { ...goal, percent, saved };
+    })
+    .sort((first, second) => first.percent - second.percent)[0];
 
   return (
-    <AppShell title="Updates" backHref="/settings">
+    <AppShell title="Briefing" backHref="/settings">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}
@@ -107,24 +117,12 @@ export default async function NotificationsPage({
         </div>
       ) : null}
 
-      <section className="rounded-[24px] bg-app-tint p-5 text-white shadow-ios">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold opacity-80">Today&apos;s Brief</p>
-            <p className="mt-2 text-3xl font-bold tracking-tight">
-              {unreadItems.length > 0 ? `${unreadItems.length} update${unreadItems.length === 1 ? "" : "s"}` : "You're caught up"}
-            </p>
-          </div>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-bold capitalize">{preferences.frequency}</span>
-        </div>
-        <p className="mt-3 text-sm leading-6 opacity-90">
-          A daily read on budgets, bills, goals, household activity, and anything that needs attention.
+      <section className="ios-card p-5">
+        <p className="text-lg font-medium text-app-muted">Good morning</p>
+        <p className="mt-2 text-3xl font-extrabold tracking-tight text-app-text">
+          {priorityItems.length > 0 ? "A few things need attention." : "Your household is on track."}
         </p>
-      </section>
-
-      <section className="ios-card mt-5 p-4">
-        <h2 className="text-lg font-bold text-app-text">Morning brief</h2>
-        <div className="mt-3 grid gap-2 text-sm">
+        <div className="mt-5 grid gap-2 text-sm">
           <div className="flex justify-between rounded-2xl bg-app-bg px-3 py-2">
             <span className="text-app-muted">Checking</span>
             <span className="font-bold text-app-text">{inbox.brief.checkingBalance === null ? "Add account" : formatCurrency(Number(inbox.brief.checkingBalance))}</span>
@@ -137,13 +135,34 @@ export default async function NotificationsPage({
             <span className="text-app-muted">Goals</span>
             <span className="font-bold text-app-text">{inbox.brief.goalLine}</span>
           </div>
+          <div className="flex justify-between rounded-2xl bg-app-bg px-3 py-2">
+            <span className="text-app-muted">Next bill</span>
+            <span className="text-right font-bold text-app-text">
+              {upcomingBill ? `${upcomingBill.description} ${formatShortDate(upcomingBill.next_due_on)}` : "Nothing due soon"}
+            </span>
+          </div>
         </div>
-        <p className="mt-3 rounded-2xl bg-app-bg p-3 text-sm font-medium text-app-text">{inbox.brief.tip}</p>
+        <p className="mt-4 rounded-2xl bg-app-tint/10 p-3 text-sm font-semibold text-app-tint">{inbox.brief.tip}</p>
       </section>
 
+      {goalProgress ? (
+        <section className="ios-card mt-5 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-app-text">{goalProgress.name}</h2>
+              <p className="mt-1 text-sm text-app-muted">{formatCurrency(goalProgress.saved)} saved toward this goal.</p>
+            </div>
+            <p className="rounded-full bg-app-bg px-3 py-1 text-sm font-bold text-app-tint">{goalProgress.percent}%</p>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-app-bg">
+            <div className="h-full rounded-full bg-app-tint" style={{ width: `${Math.min(100, Math.max(0, goalProgress.percent))}%` }} />
+          </div>
+        </section>
+      ) : null}
+
       <InboxSection title="Action needed" items={priorityItems} empty="No urgent finance alerts right now." />
+      <InboxSection title="Recent wins" items={celebrationItems} empty="Wins and achievements will appear here." />
       <InboxSection title="Insights" items={insightItems} empty="More insights appear as you add transactions." />
-      <InboxSection title="Wins" items={celebrationItems} empty="Achievements and streaks will appear here." />
 
       <section className="mt-5">
         <div className="mb-3 flex items-center justify-between gap-3">

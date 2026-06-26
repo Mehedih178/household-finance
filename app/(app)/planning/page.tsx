@@ -11,7 +11,7 @@ const planningLinks = [
   { href: "/reports", title: "Reports", detail: "Health score, trends, and spending breakdown", emoji: "📊" },
   { href: "/wealth", title: "Wealth", detail: "Net worth, milestones, and FIRE estimate", emoji: "📈" },
   { href: "/recurring", title: "Bills", detail: "Recurring income, subscriptions, and due dates", emoji: "🔄" },
-  { href: "/notifications", title: "Inbox", detail: "Smart alerts and morning brief", emoji: "🔔" },
+  { href: "/notifications", title: "Briefing", detail: "Daily read on what needs attention", emoji: "🔔" },
   { href: "/meeting", title: "Meeting", detail: "Monthly review for both of you", emoji: "🗓️" },
   { href: "/feed", title: "Feed", detail: "Household activity timeline", emoji: "❤️" }
 ];
@@ -45,7 +45,7 @@ export default async function PlanningPage() {
   const nextBill = recurring?.[0];
 
   return (
-    <AppShell title="Planning">
+    <AppShell title="Plan">
       <section className="rounded-[30px] bg-app-card p-5 shadow-ios-sm">
         <p className="text-sm font-semibold text-app-muted">This month</p>
         <p className="mt-2 text-3xl font-bold tracking-tight text-app-text">

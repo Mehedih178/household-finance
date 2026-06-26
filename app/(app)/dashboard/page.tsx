@@ -10,7 +10,6 @@ import { budgetAlert, daysLeftInMonth } from "@/lib/budgeting";
 import { getDashboardData } from "@/lib/data";
 import { defaultNotificationPreferences, generateFinanceInbox } from "@/lib/finance-inbox";
 import { completedGoals, savingsStreak, savingsTotal, underBudgetStreak } from "@/lib/gamification";
-import { financialHealthScore } from "@/lib/insights";
 import { categoryEmoji, formatCurrency, formatShortDate, monthKey } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -18,7 +17,6 @@ export default async function DashboardPage() {
   const data = await getDashboardData(currentMonth);
   const income = data.transactions.filter((t) => t.kind === "income").reduce((sum, t) => sum + Number(t.amount), 0);
   const expenses = data.transactions.filter((t) => t.kind === "expense").reduce((sum, t) => sum + Number(t.amount), 0);
-  const cashFlow = income - expenses;
   const daysLeft = daysLeftInMonth(currentMonth);
   const budgetStreak = underBudgetStreak({
     budgets: data.streakBudgets,
@@ -50,12 +48,27 @@ export default async function DashboardPage() {
   const budgetUsedPercent = totalBudgeted > 0 ? Math.min(100, Math.max(0, (expenses / totalBudgeted) * 100)) : 0;
   const status = remainingBudget >= 0 ? "You're on track this month" : "You're over plan this month";
   const nextBills = data.recurring.slice(0, 3);
-  const health = financialHealthScore({
-    currentBudgets: data.budgets,
-    currentTransactions: data.transactions,
-    previousTransactions: data.previousTransactions
-  });
-
+  const nextBill = nextBills[0];
+  const previousExpenses = data.previousTransactions
+    .filter((transaction) => transaction.kind === "expense")
+    .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
+  const spendingDelta = previousExpenses > 0
+    ? Math.round(((expenses - previousExpenses) / previousExpenses) * 100)
+    : null;
+  const topGoal = data.goals
+    .map((goal) => {
+      const saved = data.goalContributions
+        .filter((contribution) => contribution.goal_id === goal.id)
+        .reduce((sum, contribution) => sum + Number(contribution.amount), 0);
+      const percent = Number(goal.target_amount) > 0 ? Math.round((saved / Number(goal.target_amount)) * 100) : 0;
+      return { ...goal, percent, saved };
+    })
+    .sort((first, second) => first.percent - second.percent)[0];
+  const goalLine = topGoal
+    ? topGoal.percent < 50
+      ? `${topGoal.name} goal needs attention.`
+      : `${topGoal.name} is ${topGoal.percent}% funded.`
+    : "Create a shared goal together.";
   const chartData = Array.from({ length: 4 }).map((_, index) => {
     const week = index + 1;
     const weekly = data.transactions.filter((t) => {
@@ -90,22 +103,31 @@ export default async function DashboardPage() {
     >
       <HouseholdSiteSwitcher activeHouseholdId={data.householdId} memberships={data.memberships} />
 
-      <section className="rounded-[24px] bg-app-tint p-5 text-white shadow-ios">
-        <p className="text-lg font-semibold opacity-85">Good afternoon</p>
-        <p className="mt-3 text-2xl font-bold tracking-tight">{status}</p>
-        <p className="mt-4 text-5xl font-bold tracking-tight">{formatCurrency(remainingBudget)}</p>
-        <p className="mt-2 text-sm opacity-85">available this month</p>
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/20">
-          <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${budgetUsedPercent}%` }} />
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-white/12 p-3">
-            <p className="text-xs font-semibold opacity-75">Health</p>
-            <p className="mt-1 text-2xl font-bold">{health.score}/100</p>
+      <section className="ios-card p-5">
+        <p className="text-lg font-medium text-app-muted">Good afternoon</p>
+        <p className="mt-2 text-3xl font-extrabold tracking-tight text-app-text">{status.replace("You're", "Your household is")}</p>
+        <div className="mt-5 rounded-ios bg-app-tint p-4 text-white shadow-ios-sm">
+          <p className="text-sm font-semibold opacity-85">Available this month</p>
+          <p className="mt-2 text-4xl font-extrabold tracking-tight">{formatCurrency(remainingBudget)}</p>
+          <p className="mt-1 text-sm opacity-85">
+            {spendingDelta === null
+              ? "Add more history to compare with last month."
+              : `${Math.abs(spendingDelta)}% ${spendingDelta > 0 ? "more" : "less"} spending than last month.`}
+          </p>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/20">
+            <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${budgetUsedPercent}%` }} />
           </div>
-          <div className="rounded-2xl bg-white/12 p-3">
-            <p className="text-xs font-semibold opacity-75">Cash flow</p>
-            <p className="mt-1 text-2xl font-bold">{formatCurrency(cashFlow)}</p>
+        </div>
+        <div className="mt-4 grid gap-3 text-sm">
+          <div className="flex items-center justify-between rounded-2xl bg-app-bg px-3 py-2">
+            <span className="text-app-muted">Coming up</span>
+            <span className="font-semibold text-app-text">
+              {nextBill ? `${nextBill.description} ${formatShortDate(nextBill.next_due_on)}` : "No bills due soon"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded-2xl bg-app-bg px-3 py-2">
+            <span className="text-app-muted">Goal</span>
+            <span className="text-right font-semibold text-app-text">{goalLine}</span>
           </div>
         </div>
       </section>
@@ -118,8 +140,10 @@ export default async function DashboardPage() {
       <Link href="/notifications" className="ios-card mt-5 block p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-app-muted">Today&apos;s brief</p>
-            <p className="mt-1 text-xl font-bold text-app-text">{unreadInboxCount} update{unreadInboxCount === 1 ? "" : "s"} waiting</p>
+            <p className="text-sm font-semibold text-app-muted">Daily brief</p>
+            <p className="mt-1 text-xl font-bold text-app-text">
+              {unreadInboxCount > 0 ? `${unreadInboxCount} item${unreadInboxCount === 1 ? "" : "s"} need attention` : "Everything looks calm"}
+            </p>
           </div>
           <span className="rounded-full bg-app-tint/10 px-3 py-1 text-sm font-bold text-app-tint">Updates</span>
         </div>
