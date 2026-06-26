@@ -427,6 +427,10 @@ on public.recurring_items for update
 using (public.is_household_member(household_id) and owner_id = auth.uid())
 with check (public.is_household_member(household_id) and owner_id = auth.uid());
 
+create policy "Owners delete own recurring items"
+on public.recurring_items for delete
+using (public.is_household_member(household_id) and owner_id = auth.uid());
+
 create policy "Members view invitations"
 on public.invitations for select
 using (public.is_household_member(household_id));

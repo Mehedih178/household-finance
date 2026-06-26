@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const totalBudgeted = data.budgets.reduce((sum, budget) => sum + Number(budget.amount), 0);
   const remainingBudget = totalBudgeted - expenses;
   const budgetUsedPercent = totalBudgeted > 0 ? Math.min(100, Math.max(0, (expenses / totalBudgeted) * 100)) : 0;
-  const nextBill = data.recurring[0];
+  const nextBill = data.recurring.find((item) => item.kind === "expense");
   const previousExpenses = data.previousTransactions
     .filter((transaction) => transaction.kind === "expense")
     .reduce((sum, transaction) => sum + Number(transaction.amount), 0);

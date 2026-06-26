@@ -321,13 +321,24 @@ export function generateFinanceInbox({
     if (item.next_due_on <= threeDaysKey) {
       const dueTomorrow = item.next_due_on === tomorrowKey;
       const dueToday = item.next_due_on <= todayKey;
+      const isBill = item.kind === "expense";
       items.push({
         id: `bill-${item.id}`,
-        category: item.frequency === "monthly" || item.frequency === "yearly" ? "bills" : "recurring",
+        category: isBill ? "bills" : "recurring",
         severity: dueToday ? "warning" : "info",
-        title: dueToday ? `${item.description} due today` : dueTomorrow ? `${item.description} renews tomorrow` : `${item.description} due in ${daysBetween(today, new Date(`${item.next_due_on}T00:00:00`))} days`,
+        title: isBill
+          ? dueToday
+            ? `${item.description} due today`
+            : dueTomorrow
+              ? `${item.description} renews tomorrow`
+              : `${item.description} due in ${daysBetween(today, new Date(`${item.next_due_on}T00:00:00`))} days`
+          : dueToday
+            ? `${item.description} expected today`
+            : dueTomorrow
+              ? `${item.description} expected tomorrow`
+              : `${item.description} expected in ${daysBetween(today, new Date(`${item.next_due_on}T00:00:00`))} days`,
         detail: `${formatCurrency(Number(item.amount))} · ${item.frequency}`,
-        emoji: item.frequency === "monthly" || item.frequency === "yearly" ? "🔄" : "📅",
+        emoji: isBill ? "🔄" : "💰",
         href: "/recurring",
         createdAt: now
       });
@@ -461,7 +472,7 @@ export function generateFinanceInbox({
 
   const unreadCount = filtered.filter((item) => item.severity === "danger" || item.severity === "warning" || item.category === "goals" || item.category === "bills").length;
   const budgetPressure = filtered.find((item) => item.category === "budget");
-  const upcomingBills = filtered.filter((item) => item.category === "bills" || item.category === "recurring").length;
+  const upcomingBills = filtered.filter((item) => item.category === "bills").length;
   const bestGoal = goals
     .map((goal) => {
       const saved = contributions.filter((contribution) => contribution.goal_id === goal.id).reduce((sum, contribution) => sum + Number(contribution.amount), 0);

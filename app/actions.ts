@@ -448,8 +448,8 @@ export async function createCategory(formData: FormData) {
 
 export async function createRecurringItem(formData: FormData) {
   const { supabase, user, householdId } = await requireHousehold();
-  await supabase.from("recurring_items").insert({
-    household_id: householdId,
+  const id = value(formData, "id");
+  const payload = {
     account_id: value(formData, "account_id") || null,
     category_id: value(formData, "category_id") || null,
     amount: Number(value(formData, "amount") || 0),
@@ -458,12 +458,26 @@ export async function createRecurringItem(formData: FormData) {
     frequency: value(formData, "frequency") as "weekly" | "biweekly" | "monthly" | "yearly",
     next_due_on: value(formData, "next_due_on"),
     is_shared: formData.get("is_shared") === "on",
-    owner_id: user.id,
-    created_by: user.id,
-    updated_by: user.id
-  });
+    updated_by: user.id,
+    updated_at: new Date().toISOString()
+  };
+
+  const query = id
+    ? supabase.from("recurring_items").update(payload).eq("id", id).eq("household_id", householdId)
+    : supabase.from("recurring_items").insert({
+        ...payload,
+        household_id: householdId,
+        owner_id: user.id,
+        created_by: user.id
+      });
+  const { error } = await query;
+
+  if (error) redirect(`/recurring?error=${encodeURIComponent(error.message)}`);
+
   revalidatePath("/recurring");
   revalidatePath("/dashboard");
+  revalidatePath("/planning");
+  redirect("/recurring?saved=1");
 }
 
 export async function createGoal(formData: FormData) {
@@ -631,12 +645,16 @@ export async function markAllNotificationsRead(formData: FormData) {
 
 export async function deleteRecurringItem(formData: FormData) {
   const { supabase, householdId } = await requireHousehold();
-  await supabase
+  const { error } = await supabase
     .from("recurring_items")
     .delete()
     .eq("id", value(formData, "id"))
     .eq("household_id", householdId);
+  if (error) redirect(`/recurring?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/recurring");
+  revalidatePath("/dashboard");
+  revalidatePath("/planning");
+  redirect("/recurring?deleted=1");
 }
 
 export async function saveTransaction(formData: FormData) {

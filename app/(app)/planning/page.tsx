@@ -26,6 +26,7 @@ export default async function PlanningPage({
   const budgeted = (budgets ?? []).reduce((sum, budget) => sum + Number(budget.amount), 0);
   const budgetPercent = budgeted ? (spent / budgeted) * 100 : 0;
   const available = budgeted - spent;
+  const recurringBills = (recurring ?? []).filter((item) => item.kind === "expense");
   const topGoal = (goals ?? []).map((goal) => {
     const saved = (contributions ?? [])
       .filter((contribution) => contribution.goal_id === goal.id)
@@ -36,7 +37,7 @@ export default async function PlanningPage({
       saved
     };
   }).sort((first, second) => second.percent - first.percent)[0];
-  const nextBill = recurring?.[0];
+  const nextBill = recurringBills[0];
   const monthLabel = new Date(`${month.start}T00:00:00`).toLocaleDateString("en-US", { month: "long" });
   const budgetRows = (budgets ?? []).map((budget) => {
     const categorySpent = (transactions ?? [])
@@ -141,13 +142,13 @@ export default async function PlanningPage({
           <Link href="/recurring" className="text-sm font-semibold text-app-tint">Manage</Link>
         </div>
         <div className="grid gap-3">
-          {recurring?.length ? recurring.slice(0, 3).map((item) => (
+          {recurringBills.length ? recurringBills.slice(0, 3).map((item) => (
             <Link key={item.id} href="/recurring" className="ios-card flex items-center justify-between gap-3 p-4">
               <div>
                 <p className="font-bold text-app-text">{item.description}</p>
                 <p className="mt-1 text-sm text-app-muted">{formatShortDate(item.next_due_on)} · {item.frequency}</p>
               </div>
-              <p className="font-bold text-app-text">{formatCurrency(Number(item.amount))}</p>
+              <p className="font-bold text-app-text">-{formatCurrency(Number(item.amount))}</p>
             </Link>
           )) : (
             <Link href="/recurring" className="ios-card block p-5 text-center font-semibold text-app-tint">Add recurring bills</Link>
