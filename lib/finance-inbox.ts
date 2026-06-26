@@ -253,7 +253,7 @@ export function generateFinanceInbox({
           title: `${category} spending is ${Math.abs(spike)}% ${spike > 0 ? "higher" : "lower"} than last month`,
           detail: `${formatCurrency(spent)} this month vs ${formatCurrency(priorSpent)} last month.`,
           emoji: spike > 0 ? "📈" : "📉",
-          href: "/reports",
+          href: "/planning",
           createdAt: now
         });
       }
@@ -419,7 +419,7 @@ export function generateFinanceInbox({
     title: "Week Summary",
     detail: `Income: ${formatCurrency(weeklyIncome)} · Spent: ${formatCurrency(weeklySpent)} · Saved: ${formatCurrency(weeklyIncome - weeklySpent)}${topCategory ? ` · Top: ${topCategory.name} (${formatCurrency(topCategory.amount)})` : ""}.`,
     emoji: "📊",
-    href: "/reports",
+    href: "/planning",
     createdAt: now
   });
 
@@ -434,7 +434,7 @@ export function generateFinanceInbox({
     title: `${new Date(`${currentMonth}-01T00:00:00`).toLocaleString("en-US", { month: "long" })} Recap`,
     detail: `Spent: ${formatCurrency(monthlySpent)} · Saved: ${formatCurrency(monthlyIncome - monthlySpent)} · Net worth: ${formatCurrency(currentNetWorth || Number(latestSnapshot?.net_worth ?? 0))}.`,
     emoji: "📈",
-    href: "/reports",
+    href: "/planning",
     createdAt: now
   });
 
@@ -447,7 +447,7 @@ export function generateFinanceInbox({
       title: `Net worth exceeded ${formatCurrency(netWorthMilestone)}`,
       detail: `Current tracked net worth is ${formatCurrency(currentNetWorth)}.`,
       emoji: "🏆",
-      href: "/wealth",
+      href: "/planning",
       createdAt: now
     });
   }

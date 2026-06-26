@@ -89,7 +89,7 @@ export async function GET(request: Request) {
       title: topItem ? topItem.title : "Morning financial brief",
       body: topItem ? topItem.detail : inbox.brief.tip,
       tag: topItem?.id ?? "finance-digest",
-      url: topItem?.href ?? "/notifications"
+      url: topItem?.href ?? "/dashboard"
     });
 
     try {

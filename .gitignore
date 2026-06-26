@@ -21,3 +21,4 @@ build/
 # local workspace scratch/output
 work/
 outputs/
+.serena/

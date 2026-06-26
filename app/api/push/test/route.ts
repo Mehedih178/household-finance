@@ -31,7 +31,7 @@ export async function POST() {
     title: "Household Finance",
     body: "Push notifications are working on this device.",
     tag: "push-test",
-    url: "/notifications"
+    url: "/dashboard"
   });
 
   const results = await Promise.allSettled(

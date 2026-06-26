@@ -428,7 +428,7 @@ export async function createBudget(formData: FormData) {
 
   revalidatePath("/budgets");
   revalidatePath("/dashboard");
-  revalidatePath("/notifications");
+  revalidatePath("/planning");
   redirect(`/budgets?month=${encodeURIComponent(month)}&saved=1`);
 }
 
@@ -509,7 +509,7 @@ export async function createFinancialNote(formData: FormData) {
   const targetType = value(formData, "target_type") as "transaction" | "account" | "goal" | "household";
   const targetId = value(formData, "target_id") || null;
   const body = value(formData, "body");
-  const next = value(formData, "next") || "/feed";
+  const next = value(formData, "next") || "/dashboard";
   const isShared = formData.has("is_shared") ? formData.get("is_shared") === "on" : true;
 
   if (!body) redirect(safeNextPath(next));
@@ -526,8 +526,8 @@ export async function createFinancialNote(formData: FormData) {
 
   if (error) redirect(`${safeNextPath(next)}?error=${encodeURIComponent(error.message)}`);
 
-  revalidatePath("/feed");
-  revalidatePath("/meeting");
+  revalidatePath("/dashboard");
+  revalidatePath("/planning");
   revalidatePath("/accounts");
   revalidatePath("/goals");
   revalidatePath("/transactions");
@@ -551,11 +551,11 @@ export async function saveNetWorthSnapshot(formData: FormData) {
     { onConflict: "household_id,snapshot_on" }
   );
 
-  if (error) redirect(`/wealth?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/planning?error=${encodeURIComponent(error.message)}`);
 
-  revalidatePath("/wealth");
+  revalidatePath("/planning");
   revalidatePath("/dashboard");
-  redirect("/wealth");
+  redirect("/planning");
 }
 
 export async function saveNotificationPreferences(formData: FormData) {
@@ -579,17 +579,17 @@ export async function saveNotificationPreferences(formData: FormData) {
     onConflict: "household_id,user_id"
   });
 
-  if (error) redirect(`/notifications?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
 
-  revalidatePath("/notifications");
+  revalidatePath("/settings");
   revalidatePath("/dashboard");
-  redirect("/notifications?message=Notification controls saved");
+  redirect("/settings?message=Notification controls saved");
 }
 
 export async function markNotificationRead(formData: FormData) {
   const { supabase, user, householdId } = await requireHousehold();
   const notificationId = value(formData, "notification_id");
-  const next = value(formData, "next") || "/notifications";
+  const next = value(formData, "next") || "/dashboard";
 
   if (!notificationId) redirect(safeNextPath(next));
 
@@ -603,7 +603,7 @@ export async function markNotificationRead(formData: FormData) {
     { onConflict: "household_id,user_id,notification_id" }
   );
 
-  revalidatePath("/notifications");
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard");
   redirect(safeNextPath(next));
 }
@@ -624,9 +624,9 @@ export async function markAllNotificationsRead(formData: FormData) {
     );
   }
 
-  revalidatePath("/notifications");
   revalidatePath("/dashboard");
-  redirect("/notifications?message=Inbox marked read");
+  revalidatePath("/dashboard");
+  redirect("/settings?message=Updates marked read");
 }
 
 export async function deleteRecurringItem(formData: FormData) {
@@ -694,14 +694,14 @@ export async function importTransactions(formData: FormData) {
   const isShared = formData.get("is_shared") === "on";
 
   if (!(file instanceof File) || file.size === 0) {
-    redirect("/transactions/import?error=Choose a CSV file to import");
+    redirect("/transactions?error=Choose a CSV file to import");
   }
 
   const csv = await file.text();
   const imported = parseTransactionCsv(csv).slice(0, 500);
 
   if (imported.length === 0) {
-    redirect("/transactions/import?error=No valid transactions found in that CSV");
+    redirect("/transactions?error=No valid transactions found in that CSV");
   }
 
   const [{ data: categories }, { data: accounts }] = await Promise.all([
@@ -735,7 +735,7 @@ export async function importTransactions(formData: FormData) {
   }));
 
   const { error } = await supabase.from("transactions").insert(payload);
-  if (error) redirect(`/transactions/import?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/transactions?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
