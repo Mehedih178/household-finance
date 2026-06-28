@@ -714,7 +714,7 @@ export async function saveTransaction(formData: FormData) {
     kind: value(formData, "kind") as "income" | "expense",
     description: value(formData, "description"),
     occurred_on: value(formData, "occurred_on"),
-    is_shared: formData.get("is_shared") === "on",
+    is_shared: true,
     owner_id: user.id,
     created_by: user.id,
     updated_by: user.id,

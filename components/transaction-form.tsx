@@ -1,5 +1,5 @@
 import { createFinancialNote, deleteTransaction, saveTransaction } from "@/app/actions";
-import { Field, ToggleRow } from "@/components/form-fields";
+import { Field } from "@/components/form-fields";
 import type { Database } from "@/lib/supabase/database.types";
 import Link from "next/link";
 
@@ -60,7 +60,6 @@ export function TransactionForm({
         <Field label="Receipt photos">
           <input className="ios-input py-3" name="receipts" type="file" accept="image/*" multiple />
         </Field>
-        <ToggleRow name="is_shared" label="Shared with household" description="Turn off to keep this personal." defaultChecked={transaction?.is_shared ?? true} />
         <button className="ios-button" type="submit">{transaction ? "Save changes" : "Add transaction"}</button>
         <Link href="/transactions" className="ios-secondary-button w-full">
           Cancel

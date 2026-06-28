@@ -60,6 +60,10 @@ export default async function TransactionsPage({
         </p>
       </section>
 
+      <section className="mb-4 rounded-2xl bg-app-bg p-4 text-sm text-app-muted">
+        Activity now follows a simpler shared-household model. New transactions are always visible to the household.
+      </section>
+
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {[
           { href: "/transactions", label: "All" },
