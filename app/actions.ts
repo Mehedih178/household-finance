@@ -434,7 +434,7 @@ export async function createBudget(formData: FormData) {
 
 export async function createCategory(formData: FormData) {
   const { supabase, user, householdId } = await requireHousehold();
-  await supabase.from("categories").insert({
+  const { error } = await supabase.from("categories").insert({
     household_id: householdId,
     name: value(formData, "name"),
     kind: value(formData, "kind") as "income",
@@ -442,8 +442,54 @@ export async function createCategory(formData: FormData) {
     icon: value(formData, "icon") || "circle",
     created_by: user.id
   });
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}#categories`);
   revalidatePath("/settings");
   revalidatePath("/transactions/new");
+  redirect("/settings?message=Category saved#categories");
+}
+
+export async function updateCategory(formData: FormData) {
+  const { supabase, householdId } = await requireHousehold();
+  const id = value(formData, "id");
+  const name = value(formData, "name");
+
+  if (!id || !name) redirect("/settings?error=Category name is required#categories");
+
+  const { error } = await supabase
+    .from("categories")
+    .update({
+      name,
+      kind: value(formData, "kind") as "income" | "expense",
+      color: value(formData, "color") || "#007aff"
+    })
+    .eq("id", id)
+    .eq("household_id", householdId);
+
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}#categories`);
+  revalidatePath("/settings");
+  revalidatePath("/transactions/new");
+  revalidatePath("/transactions");
+  revalidatePath("/budgets");
+  redirect("/settings?message=Category updated#categories");
+}
+
+export async function deleteCategory(formData: FormData) {
+  const { supabase, householdId } = await requireHousehold();
+  const id = value(formData, "id");
+  if (!id) redirect("/settings?error=Category not found#categories");
+
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", id)
+    .eq("household_id", householdId);
+
+  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}#categories`);
+  revalidatePath("/settings");
+  revalidatePath("/transactions/new");
+  revalidatePath("/transactions");
+  revalidatePath("/budgets");
+  redirect("/settings?message=Category deleted#categories");
 }
 
 export async function createRecurringItem(formData: FormData) {

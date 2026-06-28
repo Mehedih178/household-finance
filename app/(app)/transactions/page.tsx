@@ -6,15 +6,11 @@ import { categoryEmoji, formatCurrency, formatShortDate, monthKey } from "@/lib/
 export default async function TransactionsPage({
   searchParams
 }: {
-  searchParams?: { account?: string; category?: string; error?: string; imported?: string; kind?: string };
+  searchParams?: { error?: string; imported?: string; kind?: string };
 }) {
   const { supabase, householdId } = await requireHousehold();
   const currentMonth = `${monthKey()}-01`;
-  const [{ data: categories }, { data: accounts }, { data: budgets }] = await Promise.all([
-    supabase.from("categories").select("*").eq("household_id", householdId).order("name"),
-    supabase.from("accounts").select("*").eq("household_id", householdId).order("name"),
-    supabase.from("budgets").select("amount").eq("household_id", householdId).eq("month", currentMonth)
-  ]);
+  const { data: budgets } = await supabase.from("budgets").select("amount").eq("household_id", householdId).eq("month", currentMonth);
 
   let query = supabase
     .from("transactions")
@@ -25,14 +21,6 @@ export default async function TransactionsPage({
 
   if (searchParams?.kind) {
     query = query.eq("kind", searchParams.kind);
-  }
-
-  if (searchParams?.category) {
-    query = query.eq("category_id", searchParams.category);
-  }
-
-  if (searchParams?.account) {
-    query = query.eq("account_id", searchParams.account);
   }
 
   const { data: transactions } = await query;
@@ -84,23 +72,6 @@ export default async function TransactionsPage({
           </Link>
         ))}
       </div>
-
-      <form className="mb-4 grid grid-cols-3 gap-2">
-        <select className="ios-input px-2 text-sm" name="kind" defaultValue={searchParams?.kind ?? ""}>
-          <option value="">All</option>
-          <option value="expense">Spent</option>
-          <option value="income">Income</option>
-        </select>
-        <select className="ios-input px-2 text-sm" name="category" defaultValue={searchParams?.category ?? ""}>
-          <option value="">Category</option>
-          {categories?.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </select>
-        <select className="ios-input px-2 text-sm" name="account" defaultValue={searchParams?.account ?? ""}>
-          <option value="">Account</option>
-          {accounts?.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
-        </select>
-        <button className="ios-secondary-button col-span-3 min-h-11" type="submit">Apply filters</button>
-      </form>
 
       <div className="grid gap-5">
         {dayKeys.map((dayKey) => (

@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CreditCard, Home, ListChecks, Plus, Users } from "lucide-react";
+import { CreditCard, Home, ListChecks, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/dashboard", label: "Home", icon: Home, variant: "tab" },
   { href: "/transactions", label: "Activity", icon: CreditCard, variant: "tab" },
   { href: "/transactions/new", label: "Add", icon: Plus, variant: "action" },
-  { href: "/planning", label: "Plan", icon: ListChecks, variant: "tab" },
-  { href: "/settings", label: "Household", icon: Users, variant: "tab" }
+  { href: "/planning", label: "Budget", icon: ListChecks, variant: "tab" },
+  { href: "/settings", label: "More", icon: Settings, variant: "tab" }
 ];
 
 export function BottomNav() {

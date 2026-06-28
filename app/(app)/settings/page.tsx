@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createCategory, saveNotificationPreferences, signOut, updateHouseholdName } from "@/app/actions";
+import { createCategory, deleteCategory, saveNotificationPreferences, signOut, updateCategory, updateHouseholdName } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { Field } from "@/components/form-fields";
 import { HouseholdSiteSwitcher } from "@/components/household-site-switcher";
@@ -10,14 +10,6 @@ import { requireHousehold } from "@/lib/data";
 import { defaultNotificationPreferences } from "@/lib/finance-inbox";
 import { getVapidPublicKey } from "@/lib/push";
 import { APP_VERSION, getBuildLabel } from "@/lib/version";
-
-const sections = [
-  { href: "/settings#household", label: "Household", detail: "Name, members, and invites" },
-  { href: "/accounts", label: "Accounts", detail: "Checking, savings, cards, and cash" },
-  { href: "/settings#categories", label: "Categories", detail: "The labels behind your monthly plan" },
-  { href: "/recurring", label: "Recurring Bills", detail: "Subscriptions, paychecks, and due dates" },
-  { href: "/settings#preferences", label: "Preferences", detail: "Theme, sign out, and app defaults" }
-];
 
 export default async function SettingsPage({
   searchParams
@@ -34,7 +26,7 @@ export default async function SettingsPage({
   const preferences = notificationPreferences ?? defaultNotificationPreferences;
 
   return (
-    <AppShell title="Household">
+    <AppShell title="More">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}
@@ -72,9 +64,13 @@ export default async function SettingsPage({
       <HouseholdSiteSwitcher activeHouseholdId={householdId} memberships={memberships} className="mt-5" />
 
       <section className="mt-5">
-        <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-[.16em] text-app-muted">Money setup</h2>
+        <h2 className="mb-3 px-1 text-sm font-bold uppercase tracking-[.16em] text-app-muted">Money</h2>
         <div className="ios-card overflow-hidden">
-          {sections.map((item, index) => (
+          {[
+            { href: "/accounts", label: "Accounts", detail: "Bank accounts, cards, and debt" },
+            { href: "/planning", label: "Budget", detail: "Monthly plan and category limits" },
+            { href: "/recurring", label: "Recurring bills", detail: "Subscriptions and repeating bills" }
+          ].map((item, index) => (
             <Link
               key={item.href}
               href={item.href}
@@ -92,8 +88,8 @@ export default async function SettingsPage({
 
       <section className="ios-card mt-5 grid gap-4 p-4" id="reminders">
         <div>
-          <h2 className="text-lg font-bold text-app-text">Daily reminders</h2>
-          <p className="mt-1 text-sm text-app-muted">Keep reminder setup simple: choose when to hear from the app, then enable push on this iPhone.</p>
+          <h2 className="text-lg font-bold text-app-text">Reminders</h2>
+          <p className="mt-1 text-sm text-app-muted">Choose how often the app should remind you, then enable push on this iPhone.</p>
         </div>
         <form action={saveNotificationPreferences} className="grid gap-4">
           <Field label="Reminder schedule">
@@ -103,35 +99,14 @@ export default async function SettingsPage({
               <option value="instant">As often as possible</option>
             </select>
           </Field>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Budget alerts</span>
-            <input name="budget_alerts" type="checkbox" defaultChecked={preferences.budget_alerts} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Bills and subscriptions</span>
-            <input name="bills" type="checkbox" defaultChecked={preferences.bills} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Goals and milestones</span>
-            <input name="goals" type="checkbox" defaultChecked={preferences.goals} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Household activity</span>
-            <input name="household_activity" type="checkbox" defaultChecked={preferences.household_activity} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Insights and trends</span>
-            <input name="insights" type="checkbox" defaultChecked={preferences.insights} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Achievements</span>
-            <input name="achievements" type="checkbox" defaultChecked={preferences.achievements} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl bg-app-bg p-3 text-sm font-semibold text-app-text">
-            <span>Recurring transactions</span>
-            <input name="recurring_transactions" type="checkbox" defaultChecked={preferences.recurring_transactions} className="h-5 w-5 accent-[rgb(var(--app-tint))]" />
-          </label>
-          <button className="ios-button" type="submit">Save reminder preferences</button>
+          <input type="hidden" name="budget_alerts" value={preferences.budget_alerts ? "on" : ""} />
+          <input type="hidden" name="bills" value={preferences.bills ? "on" : ""} />
+          <input type="hidden" name="goals" value={preferences.goals ? "on" : ""} />
+          <input type="hidden" name="household_activity" value={preferences.household_activity ? "on" : ""} />
+          <input type="hidden" name="insights" value={preferences.insights ? "on" : ""} />
+          <input type="hidden" name="achievements" value={preferences.achievements ? "on" : ""} />
+          <input type="hidden" name="recurring_transactions" value={preferences.recurring_transactions ? "on" : ""} />
+          <button className="ios-button" type="submit">Save reminders</button>
         </form>
       </section>
 
@@ -168,12 +143,26 @@ export default async function SettingsPage({
         <button className="ios-button" type="submit">Save category</button>
       </form>
 
-      <section className="mt-5 grid gap-2">
+      <section className="mt-5 grid gap-3">
+        <h2 className="px-1 text-sm font-bold uppercase tracking-[.16em] text-app-muted">Edit categories</h2>
         {categories?.map((category) => (
-          <div key={category.id} className="flex items-center justify-between rounded-2xl bg-app-card px-4 py-3">
-            <span className="font-medium text-app-text">{category.name}</span>
-            <span className="text-sm capitalize text-app-muted">{category.kind}</span>
-          </div>
+          <form key={category.id} action={updateCategory} className="ios-card grid gap-3 p-4">
+            <input type="hidden" name="id" value={category.id} />
+            <div className="grid grid-cols-[1fr_auto] gap-3">
+              <input className="ios-input" name="name" defaultValue={category.name} required />
+              <select className="ios-input min-w-[112px]" name="kind" defaultValue={category.kind}>
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <input className="ios-input h-12 w-20 p-1" name="color" type="color" defaultValue={category.color} />
+              <div className="flex items-center gap-3">
+                <button className="ios-secondary-button min-h-10 px-4 text-sm" type="submit">Save</button>
+                <button className="min-h-10 text-sm font-semibold text-app-danger" formAction={deleteCategory} type="submit">Delete</button>
+              </div>
+            </div>
+          </form>
         ))}
       </section>
 

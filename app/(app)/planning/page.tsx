@@ -55,7 +55,7 @@ export default async function PlanningPage({
   }).sort((first, second) => second.spent - first.spent);
 
   return (
-    <AppShell title="Plan">
+    <AppShell title="Budget">
       {searchParams?.error ? (
         <div className="mb-4 rounded-2xl border border-app-danger/30 bg-app-danger/10 p-4 text-sm text-app-danger">
           {searchParams.error}
@@ -102,24 +102,6 @@ export default async function PlanningPage({
       </section>
 
       <section className="mt-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-app-text">Goals</h2>
-          <Link href="/goals" className="text-sm font-semibold text-app-tint">Manage</Link>
-        </div>
-        {topGoal ? (
-          <Link href="/goals" className="ios-card block p-5">
-            <p className="text-3xl">{topGoal.name.toLowerCase().includes("trip") || topGoal.name.toLowerCase().includes("japan") ? "🏖️" : "🎯"}</p>
-            <p className="mt-3 text-2xl font-bold tracking-tight text-app-text">{topGoal.name}</p>
-            <p className="mt-1 text-sm text-app-muted">{formatCurrency(topGoal.saved)} saved</p>
-            <div className="mt-4">
-              <ProgressBar value={topGoal.percent} />
-            </div>
-            <p className="mt-3 text-sm text-app-muted">{topGoal.percent}% funded</p>
-          </Link>
-        ) : (
-          <Link href="/goals" className="ios-card block p-5 text-center font-semibold text-app-tint">Create a shared goal</Link>
-        )}
-
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="ios-card p-4">
             <p className="text-sm text-app-muted">Next bill</p>
@@ -154,6 +136,26 @@ export default async function PlanningPage({
             <Link href="/recurring" className="ios-card block p-5 text-center font-semibold text-app-tint">Add recurring bills</Link>
           )}
         </div>
+      </section>
+
+      <section className="mt-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight text-app-text">Goals</h2>
+          <Link href="/goals" className="text-sm font-semibold text-app-tint">Manage</Link>
+        </div>
+        {topGoal ? (
+          <Link href="/goals" className="ios-card block p-5">
+            <p className="text-3xl">{topGoal.name.toLowerCase().includes("trip") || topGoal.name.toLowerCase().includes("japan") ? "🏖️" : "🎯"}</p>
+            <p className="mt-3 text-2xl font-bold tracking-tight text-app-text">{topGoal.name}</p>
+            <p className="mt-1 text-sm text-app-muted">{formatCurrency(topGoal.saved)} saved</p>
+            <div className="mt-4">
+              <ProgressBar value={topGoal.percent} />
+            </div>
+            <p className="mt-3 text-sm text-app-muted">{topGoal.percent}% funded</p>
+          </Link>
+        ) : (
+          <Link href="/goals" className="ios-card block p-5 text-center font-semibold text-app-tint">Create a shared goal</Link>
+        )}
       </section>
     </AppShell>
   );
